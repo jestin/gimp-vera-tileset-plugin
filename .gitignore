@@ -1,0 +1,14 @@
+# assembled binaries
+vera_tileset
+*.o
+
+# vim stuff
+*.swp
+*.un~
+*.swo
+
+# git stats
+stats/*
+
+# ctags
+tags
