@@ -8,6 +8,9 @@ $(PROGRAM):
 install: $(PROGRAM)
 	$(GIMPTOOL) --install-bin $(PROGRAM)
 
+uninstall: $(PROGRAM)
+	$(GIMPTOOL) --uninstall-bin $(PROGRAM)
+
 all: install
 
 run: all
