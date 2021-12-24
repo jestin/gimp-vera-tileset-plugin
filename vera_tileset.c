@@ -1,5 +1,7 @@
 #include <libgimp/gimp.h>
 
+#define SAVE_PROC	"file-vera-save"
+
 static void query (void);
 static void run   (const gchar      *name,
 		gint              nparams,
@@ -19,41 +21,32 @@ MAIN()
 
 static void query (void)
 {
-	static GimpParamDef args[] =
+	static const GimpParamDef save_args[] =
 	{
-		{
-			GIMP_PDB_INT32,
-			"run-mode",
-			"Run mode"
-		},
-		{
-			GIMP_PDB_IMAGE,
-			"image",
-			"Input image"
-		},
-		{
-			GIMP_PDB_DRAWABLE,
-			"drawable",
-			"Input drawable"
-		}
+		{ GIMP_PDB_INT32,    "run-mode",     "The run mode { RUN-INTERACTIVE (0), RUN-NONINTERACTIVE (1) }" },
+		{ GIMP_PDB_IMAGE,    "image",        "Input image" },
+		{ GIMP_PDB_DRAWABLE, "drawable",     "Drawable to export" },
+		{ GIMP_PDB_STRING,   "filename",     "The name of the file to export the image in" },
+		{ GIMP_PDB_STRING,   "raw-filename", "The name of the file to export the image in" },
+		{ GIMP_PDB_INT32,    "compression",  "Compression level (0 = none, 1 = RLE, 2 = ARLE)" }
 	};
 
-	gimp_install_procedure (
-			"plug-in-vera",
-			"VERA Tile Output",
-			"Displays \"Hello, world!\" in a dialog",
-			"Jestin Stoffel",
-			"Copyright Jestin Stoffel",
-			"2021",
-			"_VERA Tiles...",
-			"INDEXED",
+	gimp_install_procedure (SAVE_PROC,
+			"Exports files in VERA compatible binaries",
+			"This plug-in exports binary files for VERA chips.",
+			"Jestin Stoffel <jestin.stoffel@gmail.com>",
+			"Copyright 2021-2022 by Jestin Stoffel",
+			"0.0.1 - 2021",
+			"VERA binary",
+			"INDEXED*",
 			GIMP_PLUGIN,
-			G_N_ELEMENTS (args), 0,
-			args, NULL);
+			G_N_ELEMENTS (save_args),
+			0,
+			save_args,
+			NULL);
 
-	gimp_plugin_menu_register (
-			"plug-in-vera",
-			"<Image>/File/Export");
+	gimp_register_file_handler_mime (SAVE_PROC, "application/octet-stream");
+	gimp_register_save_handler (SAVE_PROC, "bin", "");
 }
 
 static void run (
