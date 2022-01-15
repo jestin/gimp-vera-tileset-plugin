@@ -8,41 +8,27 @@
 
 #define SAVE_PROC	"file-vera-save"
 #define PLUG_IN_BINARY   "file-vera"
+#define VERA_DEFAULTS_PARASITE  "vera-save-defaults"
 
-static void query (void);
-static void run (const gchar      *name,
+static void query(void);
+static void run(const gchar      *name,
 		gint              nparams,
 		const GimpParam  *param,
 		gint             *nreturn_vals,
 		GimpParam       **return_vals);
 
-static gboolean save_image (const gchar  *filename,
+static gboolean save_image(const gchar  *filename,
 		gint32        image_id,
 		gint32        drawable_id,
 		GError      **error);
 
-// static gboolean save_dialog (void);
 
 typedef enum
 {
-	RAW_RGB,          /* RGB Image */
-	RAW_RGBA,         /* RGB Image with an Alpha channel */
-	RAW_RGB565_BE,    /* RGB Image 16bit, 5,6,5 bits per channel, big-endian */
-	RAW_RGB565_LE,    /* RGB Image 16bit, 5,6,5 bits per channel, little-endian */
-	RAW_BGR565_BE,    /* RGB Image 16bit, 5,6,5 bits per channel, big-endian, red and blue swapped */
-	RAW_BGR565_LE,    /* RGB Image 16bit, 5,6,5 bits per channel, little-endian, red and blue swapped */
-	RAW_PLANAR,       /* Planar RGB */
-	RAW_GRAY_1BPP,
-	RAW_GRAY_2BPP,
-	RAW_GRAY_4BPP,
-	RAW_GRAY_8BPP,
-	RAW_INDEXED,      /* Indexed image */
-	RAW_INDEXEDA,     /* Indexed image with an Alpha channel */
-	RAW_GRAY_16BPP_BE,
-	RAW_GRAY_16BPP_LE,
-	RAW_GRAY_16BPP_SBE,
-	RAW_GRAY_16BPP_SLE,
-} RawType;
+	TILE_2BPP,
+	TILE_4BPP,
+	TILE_8BPP
+} TileBpp;
 
 typedef enum
 {
@@ -52,16 +38,17 @@ typedef enum
 
 typedef struct
 {
-	RawType        image_type;     /* type of image (RGB, PLANAR) */
+	TileBpp        tile_bpp;     /* type of image (RGB, PLANAR) */
 	RawPaletteType palette_type;   /* type of palette (RGB/BGR)   */
-} RawSaveVals;
+} VeraSaveVals;
 
 typedef struct
 {
 	gboolean   run;
 
-	GtkWidget *image_type_standard;
-	GtkWidget *image_type_planar;
+	GtkWidget *tile_2bpp;
+	GtkWidget *tile_4bpp;
+	GtkWidget *tile_8bpp;
 	GtkWidget *palette_type_normal;
 	GtkWidget *palette_type_bmp;
 } RawSaveGui;
@@ -71,7 +58,7 @@ typedef struct
 	gint32         file_offset;    /* offset to beginning of image in raw data */
 	gint32         image_width;    /* width of the raw image                   */
 	gint32         image_height;   /* height of the raw image                  */
-	RawType        image_type;     /* type of image (RGB, INDEXED, etc)        */
+	TileBpp        tile_bpp;       /* bits per pixel of the output             */
 	gint32         palette_offset; /* offset inside the palette file, if any   */
 	RawPaletteType palette_type;   /* type of palette (RGB/BGR)                */
 } RawConfig;
@@ -92,13 +79,20 @@ GimpPlugInInfo PLUG_IN_INFO =
 	run
 };
 
-static const RawSaveVals defaults =
+static const VeraSaveVals defaults =
 {
-	RAW_RGB,
+	TILE_4BPP,
 	RAW_PALETTE_RGB
 };
 
-static RawSaveVals rawvals;
+static VeraSaveVals veravals;
+static gboolean save_dialog(gint32 image_id);
+static void save_dialog_response(GtkWidget *widget,
+		gint response_id,
+		gpointer data);
+static void load_defaults(void);
+static void save_defaults(void);
+static void load_gui_defaults(RawSaveGui *rg);
 
 MAIN()
 
@@ -160,7 +154,7 @@ static void run (const gchar      *name,
 		image_id    = param[1].data.d_int32;
 		drawable_id = param[2].data.d_int32;
 
-		// load_defaults ();
+		load_defaults ();
 
 		/* export the image */
 		export = gimp_export_image (&image_id, &drawable_id, "VERA",
@@ -179,13 +173,13 @@ static void run (const gchar      *name,
 				/*
 				 * Possibly retrieve data...
 				 */
-				gimp_get_data (SAVE_PROC, &rawvals);
+				gimp_get_data (SAVE_PROC, &veravals);
 
 				/*
 				 * Then acquire information with a dialog...
 				 */
-				// if (! save_dialog (image_id))
-				// 	status = GIMP_PDB_CANCEL;
+				if (! save_dialog (image_id))
+					status = GIMP_PDB_CANCEL;
 				break;
 
 			case GIMP_RUN_NONINTERACTIVE:
@@ -200,14 +194,8 @@ static void run (const gchar      *name,
 					}
 					else
 					{
-						rawvals.image_type   = param[5].data.d_int32;
-						rawvals.palette_type = param[6].data.d_int32;
-
-						if (((rawvals.image_type != RAW_RGB) && (rawvals.image_type != RAW_PLANAR)) ||
-								((rawvals.palette_type != RAW_PALETTE_RGB) && (rawvals.palette_type != RAW_PALETTE_BGR)))
-						{
-							status = GIMP_PDB_CALLING_ERROR;
-						}
+						veravals.tile_bpp   = param[5].data.d_int32;
+						veravals.palette_type = param[6].data.d_int32;
 					}
 				}
 				break;
@@ -216,7 +204,7 @@ static void run (const gchar      *name,
 				/*
 				 * Possibly retrieve data...
 				 */
-				gimp_get_data (SAVE_PROC, &rawvals);
+				gimp_get_data (SAVE_PROC, &veravals);
 				break;
 
 			default:
@@ -228,7 +216,7 @@ static void run (const gchar      *name,
 			if (save_image (param[3].data.d_string,
 						image_id, drawable_id, &error))
 			{
-				gimp_set_data (SAVE_PROC, &rawvals, sizeof (rawvals));
+				gimp_set_data (SAVE_PROC, &veravals, sizeof (veravals));
 			}
 			else
 			{
@@ -347,7 +335,7 @@ static gboolean save_image (const gchar  *filename,
 			}
 		}
 	}
-	
+
 	fp = fopen (filename, "wb");
 
 	if (! fp)
@@ -360,98 +348,239 @@ static gboolean save_image (const gchar  *filename,
 
 	ret = TRUE;
 
-	switch (rawvals.image_type)
+	if (! fwrite (tile_buf, (width * height * bpp) / 2, 1, fp))
 	{
-		case RAW_RGB:
-			if (! fwrite (tile_buf, (width * height * bpp) / 2, 1, fp))  // segfault here
-			{
-				return FALSE;
-			}
+		return FALSE;
+	}
 
-			fclose (fp);
+	fclose (fp);
 
 
-			if (cmap)
-			{
-				/* we have colormap, too.write it into filename+pal */
-				gchar *newfile = g_strconcat (filename, ".pal", NULL);
-				gchar *temp;
+	if (cmap)
+	{
+		/* we have colormap, too.write it into filename+pal */
+		gchar *newfile = g_strconcat (filename, ".pal", NULL);
+		gchar *temp;
 
-				fp = fopen (newfile, "wb");
+		fp = fopen (newfile, "wb");
 
-				if (! fp)
+		if (! fp)
+		{
+			g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
+					"Could not open '%s' for writing: %s",
+					gimp_filename_to_utf8 (newfile), g_strerror (errno));
+			return FALSE;
+		}
+
+		switch (veravals.palette_type)
+		{
+			case RAW_PALETTE_RGB:
+				if (!fwrite (cmap, palsize * 3, 1, fp))
+					ret = FALSE;
+				fclose (fp);
+				break;
+
+			case RAW_PALETTE_BGR:
+				temp = g_malloc0 (palsize * 4);
+				for (i = 0, j = 0; i < palsize * 3; i += 3)
 				{
-					g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
-							"Could not open '%s' for writing: %s",
-							gimp_filename_to_utf8 (newfile), g_strerror (errno));
-					return FALSE;
+					temp[j++] = cmap[i + 2];
+					temp[j++] = cmap[i + 1];
+					temp[j++] = cmap[i + 0];
+					temp[j++] = 0;
 				}
-
-				switch (rawvals.palette_type)
-				{
-					case RAW_PALETTE_RGB:
-						if (!fwrite (cmap, palsize * 3, 1, fp))
-							ret = FALSE;
-						fclose (fp);
-						break;
-
-					case RAW_PALETTE_BGR:
-						temp = g_malloc0 (palsize * 4);
-						for (i = 0, j = 0; i < palsize * 3; i += 3)
-						{
-							temp[j++] = cmap[i + 2];
-							temp[j++] = cmap[i + 1];
-							temp[j++] = cmap[i + 0];
-							temp[j++] = 0;
-						}
-						if (!fwrite (temp, palsize * 4, 1, fp))
-							ret = FALSE;
-						fclose (fp);
-						g_free (temp);
-						break;
-				}
-			}
-			break;
-
-		default:
-			break;
+				if (!fwrite (temp, palsize * 4, 1, fp))
+					ret = FALSE;
+				fclose (fp);
+				g_free (temp);
+				break;
+		}
 	}
 
 	return ret;
 }
 
-// static gboolean
-// save_dialog (void)
-// {
-// 	GtkWidget *dialog;
-// 	GtkWidget *frame;
-// 	gboolean   run;
-// 
-// 	dialog = gimp_export_dialog_new ("VERA", PLUG_IN_BINARY, SAVE_PROC);
-// 
-// 	// frame = gimp_int_radio_group_new (TRUE, _("Compression type"),
-// 	//                                   G_CALLBACK (gimp_radio_button_update),
-// 	//                                   &compression, compression,
-// 
-// 	//                                   _("No compression"),
-// 	//                                   SGI_COMP_NONE, NULL,
-// 	//                                   _("RLE compression"),
-// 	//                                   SGI_COMP_RLE, NULL,
-// 	//                                   _("Aggressive RLE\n(not supported by SGI)"),
-// 	//                                   SGI_COMP_ARLE, NULL,
-// 
-// 	//                                   NULL);
-// 
-// 	gtk_container_set_border_width (GTK_CONTAINER (frame), 12);
-// 	gtk_box_pack_start (GTK_BOX (gimp_export_dialog_get_content_area (dialog)),
-// 			frame, TRUE, TRUE, 0);
-// 	gtk_widget_show (frame);
-// 
-// 	gtk_widget_show (dialog);
-// 
-// 	run = (gimp_dialog_run (GIMP_DIALOG (dialog)) == GTK_RESPONSE_OK);
-// 
-// 	gtk_widget_destroy (dialog);
-// 
-// 	return run;
-// }
+static GtkWidget * radio_button_init (GtkBuilder  *builder,
+		const gchar *name,
+		gint         item_data,
+		gint         initial_value,
+		gpointer     value_pointer)
+{
+	GtkWidget *radio = NULL;
+
+	radio = GTK_WIDGET (gtk_builder_get_object (builder, name));
+	if (item_data)
+		g_object_set_data (G_OBJECT (radio), "gimp-item-data", GINT_TO_POINTER (item_data));
+	if (initial_value == item_data)
+		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (radio), TRUE);
+	g_signal_connect (radio, "toggled",
+			G_CALLBACK (gimp_radio_button_update),
+			value_pointer);
+
+	return radio;
+}
+
+static gboolean save_dialog (gint32 image_id)
+{
+	RawSaveGui  rg;
+	GtkWidget  *dialog;
+	GtkBuilder *builder;
+	gchar      *ui_file;
+	GError     *error = NULL;
+
+	gimp_ui_init (PLUG_IN_BINARY, TRUE);
+
+	/* Dialog init */
+	dialog = gimp_export_dialog_new ("VERA Tile Data", PLUG_IN_BINARY, SAVE_PROC);
+	g_signal_connect (dialog, "response",
+			G_CALLBACK (save_dialog_response),
+			&rg);
+	g_signal_connect (dialog, "destroy",
+			G_CALLBACK (gtk_main_quit),
+			NULL);
+
+	/* GtkBuilder init */
+	builder = gtk_builder_new ();
+	ui_file = g_build_filename (gimp_data_directory (),
+			"ui/plug-ins/plug-in-file-vera.ui",
+			NULL);
+	if (! gtk_builder_add_from_file (builder, ui_file, &error))
+	{
+		gchar *display_name = g_filename_display_name (ui_file);
+		g_printerr ("Error loading UI file '%s': %s",
+				display_name, error ? error->message : "Unknown error");
+		g_free (display_name);
+	}
+
+	g_free (ui_file);
+
+	/* VBox */
+	gtk_box_pack_start (GTK_BOX (gimp_export_dialog_get_content_area (dialog)),
+			GTK_WIDGET (gtk_builder_get_object (builder, "vbox")),
+			FALSE, FALSE, 0);
+
+	/* Radios */
+	rg.tile_2bpp = radio_button_init (builder, "tile-bpp-2",
+			TILE_2BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
+	rg.tile_4bpp = radio_button_init (builder, "tile-bpp-4",
+			TILE_4BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
+	rg.tile_8bpp = radio_button_init (builder, "tile-bpp-8",
+			TILE_8BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
+	rg.palette_type_normal = radio_button_init (builder, "palette-type-normal",
+			RAW_PALETTE_RGB,
+			veravals.palette_type,
+			&veravals.palette_type);
+	rg.palette_type_bmp = radio_button_init (builder, "palette-type-bmp",
+			RAW_PALETTE_BGR,
+			veravals.palette_type,
+			&veravals.palette_type);
+
+	/* Load/save defaults buttons */
+	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
+			"clicked",
+			G_CALLBACK (load_gui_defaults),
+			&rg);
+
+	g_signal_connect_swapped (gtk_builder_get_object (builder, "save-defaults"),
+			"clicked",
+			G_CALLBACK (save_defaults),
+			&rg);
+
+	/* Show dialog and run */
+	gtk_widget_show (dialog);
+
+	rg.run = FALSE;
+
+	gtk_main ();
+
+	return rg.run;
+}
+
+static void save_dialog_response (GtkWidget *widget,
+		gint       response_id,
+		gpointer   data)
+{
+	RawSaveGui *rg = data;
+
+	switch (response_id)
+	{
+		case GTK_RESPONSE_OK:
+			rg->run = TRUE;
+
+		default:
+			gtk_widget_destroy (widget);
+			break;
+	}
+}
+
+static void load_gui_defaults (RawSaveGui *rg)
+{
+	load_defaults ();
+
+#define SET_ACTIVE(field, datafield) \
+	if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (rg->field), "gimp-item-data")) == veravals.datafield) \
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (rg->field), TRUE)
+
+	SET_ACTIVE (tile_2bpp, tile_bpp);
+	SET_ACTIVE (tile_4bpp, tile_bpp);
+	SET_ACTIVE (tile_8bpp, tile_bpp);
+	SET_ACTIVE (palette_type_normal, palette_type);
+	SET_ACTIVE (palette_type_bmp, palette_type);
+
+#undef SET_ACTIVE
+}
+
+static void load_defaults (void) {
+	GimpParasite *parasite;
+
+	/* initialize with hardcoded defaults */
+	veravals = defaults;
+
+	parasite = gimp_get_parasite (VERA_DEFAULTS_PARASITE);
+
+	if (parasite)
+	{
+		gchar        *def_str;
+		VeraSaveVals   tmpvals = defaults;
+		gint          num_fields;
+
+		def_str = g_strndup (gimp_parasite_data (parasite),
+				gimp_parasite_data_size (parasite));
+
+		gimp_parasite_free (parasite);
+
+		num_fields = sscanf (def_str, "%d %d",
+				(int *) &tmpvals.tile_bpp,
+				(int *) &tmpvals.palette_type);
+
+		g_free (def_str);
+
+		if (num_fields == 2)
+			veravals = tmpvals;
+	}
+}
+
+static void save_defaults (void)
+{
+	GimpParasite *parasite;
+	gchar        *def_str;
+
+	def_str = g_strdup_printf ("%d %d",
+			veravals.tile_bpp,
+			veravals.palette_type);
+
+	parasite = gimp_parasite_new (VERA_DEFAULTS_PARASITE,
+			GIMP_PARASITE_PERSISTENT,
+			strlen (def_str), def_str);
+
+	gimp_attach_parasite (parasite);
+
+	gimp_parasite_free (parasite);
+	g_free (def_str);
+}
