@@ -270,50 +270,70 @@ static gboolean save_image (const gchar  *filename,
 
 	g_object_unref (buffer);
 
-	// write out per tile, not per pixel
-	// for now assuming 4bbp and 8x8 tiles
 
-	tile_buf = g_new (guchar, (width * height * bpp) / 2) + 2;
+	int tile_buf_length;
 
-	int tile_width = 8;
-	int tile_height = 8;
-	int t_width = width / tile_width;
-	int t_height = height / tile_height;
-	int tile_buf_index = 2;
-	tile_buf[0] = 0;
-	tile_buf[1] = 0;
-
-	for(int y = 0; y < t_height; y++)
+	switch(veravals.tile_bpp)
 	{
-		int yoff = y * tile_height;
+		case TILE_2BPP:
+			tile_buf_length = ((width * height * bpp) / 4) + 2;
+			// TODO: Write 2BPP tile_buf
+			break;
 
-		for(int x = 0; x < t_width; x++)
-		{
-			int xoff = x * tile_width;
+		case TILE_4BPP:
+			// write out per tile, not per pixel
+			// for now assuming 4bbp and 8x8 tiles
 
-			// write out a single tile
-			for(int ty = 0; ty < tile_width; ty++)
+			tile_buf_length = ((width * height * bpp) / 2) + 2;
+			tile_buf = g_new (guchar, tile_buf_length);
+
+			int tile_width = 8;
+			int tile_height = 8;
+			int t_width = width / tile_width;
+			int t_height = height / tile_height;
+			int tile_buf_index = 2;
+			tile_buf[0] = 0;
+			tile_buf[1] = 0;
+
+			for(int y = 0; y < t_height; y++)
 			{
-				for(int tx = 0; tx < tile_height; tx++)
-				{
-					// get the color from the buffer
-					int buf_index = ((yoff + ty) * width) + xoff + tx;
-					guchar color = buf[buf_index];
+				int yoff = y * tile_height;
 
-					if (buf_index % 2)
+				for(int x = 0; x < t_width; x++)
+				{
+					int xoff = x * tile_width;
+
+					// write out a single tile
+					for(int ty = 0; ty < tile_width; ty++)
 					{
-						// odd byte
-						tile_buf[tile_buf_index] |= color;
-						tile_buf_index++;
-					}
-					else
-					{
-						// even byte
-						tile_buf[tile_buf_index] = color << 4;
+						for(int tx = 0; tx < tile_height; tx++)
+						{
+							// get the color from the buffer
+							int buf_index = ((yoff + ty) * width) + xoff + tx;
+							guchar color = buf[buf_index];
+
+							if (buf_index % 2)
+							{
+								// odd byte
+								tile_buf[tile_buf_index] |= color;
+								tile_buf_index++;
+							}
+							else
+							{
+								// even byte
+								tile_buf[tile_buf_index] = color << 4;
+							}
+						}
 					}
 				}
 			}
-		}
+
+			break;
+
+		case TILE_8BPP:
+			tile_buf_length = (width * height * bpp) + 2;
+			// TODO: Write 8BPP tile_buf
+			break;
 	}
 
 	fp = fopen (filename, "wb");
@@ -328,7 +348,7 @@ static gboolean save_image (const gchar  *filename,
 
 	ret = TRUE;
 
-	if (! fwrite (tile_buf, (width * height * bpp) / 2, 1, fp))
+	if (! fwrite (tile_buf, tile_buf_length, 1, fp))
 	{
 		return FALSE;
 	}
