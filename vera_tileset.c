@@ -326,6 +326,22 @@ static gboolean save_image (const gchar  *filename,
 					switch(veravals.tile_bpp)
 					{
 						case TILE_2BPP:
+							switch(buf_index % 4)
+							{
+								case 0:
+									tile_buf[tile_buf_index] = color << 6;
+									break;
+								case 1:
+									tile_buf[tile_buf_index] |= color << 4;
+									break;
+								case 2:
+									tile_buf[tile_buf_index] |= color << 2;
+									break;
+								case 3:
+									tile_buf[tile_buf_index] |= color;
+									tile_buf_index++;
+									break;
+							}
 							break;
 						case TILE_4BPP:
 							if (buf_index % 2)
@@ -341,6 +357,8 @@ static gboolean save_image (const gchar  *filename,
 							}
 							break;
 						case TILE_8BPP:
+							tile_buf[tile_buf_index] = color;
+							tile_buf_index++;
 							break;
 					}
 
