@@ -73,7 +73,7 @@ static void save_dialog_response(GtkWidget *widget,
 		gpointer data);
 static void load_defaults(void);
 static void save_defaults(void);
-static void load_gui_defaults(VeraSaveGui *rg);
+static void load_gui_defaults(VeraSaveGui *vg);
 
 MAIN()
 
@@ -382,7 +382,7 @@ static GtkWidget * radio_button_init (GtkBuilder  *builder,
 
 static gboolean save_dialog (gint32 image_id)
 {
-	VeraSaveGui  rg;
+	VeraSaveGui  vg;
 	GtkWidget  *dialog;
 	GtkBuilder *builder;
 	gchar      *ui_file;
@@ -394,7 +394,7 @@ static gboolean save_dialog (gint32 image_id)
 	dialog = gimp_export_dialog_new ("VERA Tile Data", PLUG_IN_BINARY, SAVE_PROC);
 	g_signal_connect (dialog, "response",
 			G_CALLBACK (save_dialog_response),
-			&rg);
+			&vg);
 	g_signal_connect (dialog, "destroy",
 			G_CALLBACK (gtk_main_quit),
 			NULL);
@@ -420,15 +420,15 @@ static gboolean save_dialog (gint32 image_id)
 			FALSE, FALSE, 0);
 
 	/* Radios */
-	rg.tile_2bpp = radio_button_init (builder, "tile-bpp-2",
+	vg.tile_2bpp = radio_button_init (builder, "tile-bpp-2",
 			TILE_2BPP,
 			veravals.tile_bpp,
 			&veravals.tile_bpp);
-	rg.tile_4bpp = radio_button_init (builder, "tile-bpp-4",
+	vg.tile_4bpp = radio_button_init (builder, "tile-bpp-4",
 			TILE_4BPP,
 			veravals.tile_bpp,
 			&veravals.tile_bpp);
-	rg.tile_8bpp = radio_button_init (builder, "tile-bpp-8",
+	vg.tile_8bpp = radio_button_init (builder, "tile-bpp-8",
 			TILE_8BPP,
 			veravals.tile_bpp,
 			&veravals.tile_bpp);
@@ -437,33 +437,33 @@ static gboolean save_dialog (gint32 image_id)
 	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
 			"clicked",
 			G_CALLBACK (load_gui_defaults),
-			&rg);
+			&vg);
 
 	g_signal_connect_swapped (gtk_builder_get_object (builder, "save-defaults"),
 			"clicked",
 			G_CALLBACK (save_defaults),
-			&rg);
+			&vg);
 
 	/* Show dialog and run */
 	gtk_widget_show (dialog);
 
-	rg.run = FALSE;
+	vg.run = FALSE;
 
 	gtk_main ();
 
-	return rg.run;
+	return vg.run;
 }
 
 static void save_dialog_response (GtkWidget *widget,
 		gint       response_id,
 		gpointer   data)
 {
-	VeraSaveGui *rg = data;
+	VeraSaveGui *vg = data;
 
 	switch (response_id)
 	{
 		case GTK_RESPONSE_OK:
-			rg->run = TRUE;
+			vg->run = TRUE;
 
 		default:
 			gtk_widget_destroy (widget);
@@ -471,13 +471,13 @@ static void save_dialog_response (GtkWidget *widget,
 	}
 }
 
-static void load_gui_defaults (VeraSaveGui *rg)
+static void load_gui_defaults (VeraSaveGui *vg)
 {
 	load_defaults ();
 
 #define SET_ACTIVE(field, datafield) \
-	if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (rg->field), "gimp-item-data")) == veravals.datafield) \
-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (rg->field), TRUE)
+	if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (vg->field), "gimp-item-data")) == veravals.datafield) \
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (vg->field), TRUE)
 
 	SET_ACTIVE (tile_2bpp, tile_bpp);
 	SET_ACTIVE (tile_4bpp, tile_bpp);
