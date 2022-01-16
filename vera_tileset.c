@@ -30,16 +30,9 @@ typedef enum
 	TILE_8BPP
 } TileBpp;
 
-typedef enum
-{
-	RAW_PALETTE_RGB,  /* standard RGB */
-	RAW_PALETTE_BGR   /* Windows BGRX */
-} VeraPaletteType;
-
 typedef struct
 {
-	TileBpp        tile_bpp;     /* type of image (RGB, PLANAR) */
-	VeraPaletteType palette_type;   /* type of palette (RGB/BGR)   */
+	TileBpp        tile_bpp;     /* Bits per pixel format for tiles */
 } VeraSaveVals;
 
 typedef struct
@@ -49,8 +42,6 @@ typedef struct
 	GtkWidget *tile_2bpp;
 	GtkWidget *tile_4bpp;
 	GtkWidget *tile_8bpp;
-	GtkWidget *palette_type_normal;
-	GtkWidget *palette_type_bmp;
 } VeraSaveGui;
 
 typedef struct
@@ -60,7 +51,6 @@ typedef struct
 	gint32         image_height;   /* height of the raw image                  */
 	TileBpp        tile_bpp;       /* bits per pixel of the output             */
 	gint32         palette_offset; /* offset inside the palette file, if any   */
-	VeraPaletteType palette_type;   /* type of palette (RGB/BGR)                */
 } VeraConfig;
 
 GimpPlugInInfo PLUG_IN_INFO =
@@ -73,8 +63,7 @@ GimpPlugInInfo PLUG_IN_INFO =
 
 static const VeraSaveVals defaults =
 {
-	TILE_4BPP,
-	RAW_PALETTE_RGB
+	TILE_4BPP
 };
 
 static VeraSaveVals veravals;
@@ -187,7 +176,6 @@ static void run (const gchar      *name,
 					else
 					{
 						veravals.tile_bpp   = param[5].data.d_int32;
-						veravals.palette_type = param[6].data.d_int32;
 					}
 				}
 				break;
@@ -364,29 +352,9 @@ static gboolean save_image (const gchar  *filename,
 			return FALSE;
 		}
 
-		switch (veravals.palette_type)
-		{
-			case RAW_PALETTE_RGB:
-				if (!fwrite (cmap, palsize * 3, 1, fp))
-					ret = FALSE;
-				fclose (fp);
-				break;
-
-			case RAW_PALETTE_BGR:
-				temp = g_malloc0 (palsize * 4);
-				for (i = 0, j = 0; i < palsize * 3; i += 3)
-				{
-					temp[j++] = cmap[i + 2];
-					temp[j++] = cmap[i + 1];
-					temp[j++] = cmap[i + 0];
-					temp[j++] = 0;
-				}
-				if (!fwrite (temp, palsize * 4, 1, fp))
-					ret = FALSE;
-				fclose (fp);
-				g_free (temp);
-				break;
-		}
+		if (!fwrite (cmap, palsize * 3, 1, fp))
+			ret = FALSE;
+		fclose (fp);
 	}
 
 	return ret;
@@ -464,14 +432,6 @@ static gboolean save_dialog (gint32 image_id)
 			TILE_8BPP,
 			veravals.tile_bpp,
 			&veravals.tile_bpp);
-	rg.palette_type_normal = radio_button_init (builder, "palette-type-normal",
-			RAW_PALETTE_RGB,
-			veravals.palette_type,
-			&veravals.palette_type);
-	rg.palette_type_bmp = radio_button_init (builder, "palette-type-bmp",
-			RAW_PALETTE_BGR,
-			veravals.palette_type,
-			&veravals.palette_type);
 
 	/* Load/save defaults buttons */
 	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
@@ -522,8 +482,6 @@ static void load_gui_defaults (VeraSaveGui *rg)
 	SET_ACTIVE (tile_2bpp, tile_bpp);
 	SET_ACTIVE (tile_4bpp, tile_bpp);
 	SET_ACTIVE (tile_8bpp, tile_bpp);
-	SET_ACTIVE (palette_type_normal, palette_type);
-	SET_ACTIVE (palette_type_bmp, palette_type);
 
 #undef SET_ACTIVE
 }
@@ -547,9 +505,7 @@ static void load_defaults (void) {
 
 		gimp_parasite_free (parasite);
 
-		num_fields = sscanf (def_str, "%d %d",
-				(int *) &tmpvals.tile_bpp,
-				(int *) &tmpvals.palette_type);
+		num_fields = sscanf (def_str, "%d", (int *) &tmpvals.tile_bpp);
 
 		g_free (def_str);
 
@@ -563,9 +519,7 @@ static void save_defaults (void)
 	GimpParasite *parasite;
 	gchar        *def_str;
 
-	def_str = g_strdup_printf ("%d %d",
-			veravals.tile_bpp,
-			veravals.palette_type);
+	def_str = g_strdup_printf ("%d", veravals.tile_bpp);
 
 	parasite = gimp_parasite_new (VERA_DEFAULTS_PARASITE,
 			GIMP_PARASITE_PERSISTENT,
