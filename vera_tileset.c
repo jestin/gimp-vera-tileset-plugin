@@ -30,9 +30,23 @@ typedef enum
 	TILE_8BPP
 } TileBpp;
 
+typedef enum
+{
+	TILE_WIDTH_8 = 8,
+	TILE_WIDTH_16 = 16
+} TileWidth;
+
+typedef enum
+{
+	TILE_HEIGHT_8 = 8,
+	TILE_HEIGHT_16 = 16
+} TileHeight;
+
 typedef struct
 {
 	TileBpp        tile_bpp;     /* Bits per pixel format for tiles */
+	TileWidth      tile_width;
+	TileHeight     tile_height;
 } VeraSaveVals;
 
 typedef struct
@@ -42,6 +56,10 @@ typedef struct
 	GtkWidget *tile_2bpp;
 	GtkWidget *tile_4bpp;
 	GtkWidget *tile_8bpp;
+	GtkWidget *tile_width_8;
+	GtkWidget *tile_width_16;
+	GtkWidget *tile_height_8;
+	GtkWidget *tile_height_16;
 } VeraSaveGui;
 
 typedef struct
@@ -50,6 +68,8 @@ typedef struct
 	gint32         image_width;    /* width of the raw image                   */
 	gint32         image_height;   /* height of the raw image                  */
 	TileBpp        tile_bpp;       /* bits per pixel of the output             */
+	TileWidth      tile_width;
+	TileHeight     tile_height;
 	gint32         palette_offset; /* offset inside the palette file, if any   */
 } VeraConfig;
 
@@ -63,7 +83,9 @@ GimpPlugInInfo PLUG_IN_INFO =
 
 static const VeraSaveVals defaults =
 {
-	TILE_4BPP
+	TILE_4BPP,
+	TILE_WIDTH_8,
+	TILE_HEIGHT_8
 };
 
 static VeraSaveVals veravals;
@@ -270,6 +292,10 @@ static gboolean save_image (const gchar  *filename,
 
 	g_object_unref (buffer);
 
+	int tile_width = veravals.tile_width;
+	int tile_height = veravals.tile_height;
+	int t_width = width / tile_width;
+	int t_height = height / tile_height;
 
 	int tile_buf_length;
 
@@ -287,10 +313,6 @@ static gboolean save_image (const gchar  *filename,
 			tile_buf_length = ((width * height * bpp) / 2) + 2;
 			tile_buf = g_new (guchar, tile_buf_length);
 
-			int tile_width = 8;
-			int tile_height = 8;
-			int t_width = width / tile_width;
-			int t_height = height / tile_height;
 			int tile_buf_index = 2;
 			tile_buf[0] = 0;
 			tile_buf[1] = 0;
@@ -453,6 +475,24 @@ static gboolean save_dialog (gint32 image_id)
 			veravals.tile_bpp,
 			&veravals.tile_bpp);
 
+	vg.tile_width_8 = radio_button_init (builder, "tile-width-8",
+			TILE_WIDTH_8,
+			veravals.tile_width,
+			&veravals.tile_width);
+	vg.tile_width_16 = radio_button_init (builder, "tile-width-16",
+			TILE_WIDTH_16,
+			veravals.tile_width,
+			&veravals.tile_width);
+
+	vg.tile_height_8 = radio_button_init (builder, "tile-height-8",
+			TILE_HEIGHT_8,
+			veravals.tile_height,
+			&veravals.tile_height);
+	vg.tile_height_16 = radio_button_init (builder, "tile-height-16",
+			TILE_HEIGHT_16,
+			veravals.tile_height,
+			&veravals.tile_height);
+
 	/* Load/save defaults buttons */
 	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
 			"clicked",
@@ -502,6 +542,12 @@ static void load_gui_defaults (VeraSaveGui *vg)
 	SET_ACTIVE (tile_2bpp, tile_bpp);
 	SET_ACTIVE (tile_4bpp, tile_bpp);
 	SET_ACTIVE (tile_8bpp, tile_bpp);
+
+	SET_ACTIVE (tile_width_8, tile_width);
+	SET_ACTIVE (tile_width_16, tile_width);
+
+	SET_ACTIVE (tile_height_8, tile_height);
+	SET_ACTIVE (tile_height_16, tile_height);
 
 #undef SET_ACTIVE
 }
