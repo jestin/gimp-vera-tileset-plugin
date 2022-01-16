@@ -34,12 +34,12 @@ typedef enum
 {
 	RAW_PALETTE_RGB,  /* standard RGB */
 	RAW_PALETTE_BGR   /* Windows BGRX */
-} RawPaletteType;
+} VeraPaletteType;
 
 typedef struct
 {
 	TileBpp        tile_bpp;     /* type of image (RGB, PLANAR) */
-	RawPaletteType palette_type;   /* type of palette (RGB/BGR)   */
+	VeraPaletteType palette_type;   /* type of palette (RGB/BGR)   */
 } VeraSaveVals;
 
 typedef struct
@@ -51,7 +51,7 @@ typedef struct
 	GtkWidget *tile_8bpp;
 	GtkWidget *palette_type_normal;
 	GtkWidget *palette_type_bmp;
-} RawSaveGui;
+} VeraSaveGui;
 
 typedef struct
 {
@@ -60,16 +60,8 @@ typedef struct
 	gint32         image_height;   /* height of the raw image                  */
 	TileBpp        tile_bpp;       /* bits per pixel of the output             */
 	gint32         palette_offset; /* offset inside the palette file, if any   */
-	RawPaletteType palette_type;   /* type of palette (RGB/BGR)                */
-} RawConfig;
-
-typedef struct
-{
-	FILE         *fp;        /* pointer to the already open file */
-	GeglBuffer   *buffer;    /* gimp drawable buffer             */
-	gint32        image_id;  /* gimp image id                    */
-	guchar        cmap[768]; /* color map for indexed images     */
-} RawGimpData;
+	VeraPaletteType palette_type;   /* type of palette (RGB/BGR)                */
+} VeraConfig;
 
 GimpPlugInInfo PLUG_IN_INFO =
 {
@@ -92,7 +84,7 @@ static void save_dialog_response(GtkWidget *widget,
 		gpointer data);
 static void load_defaults(void);
 static void save_defaults(void);
-static void load_gui_defaults(RawSaveGui *rg);
+static void load_gui_defaults(VeraSaveGui *rg);
 
 MAIN()
 
@@ -422,7 +414,7 @@ static GtkWidget * radio_button_init (GtkBuilder  *builder,
 
 static gboolean save_dialog (gint32 image_id)
 {
-	RawSaveGui  rg;
+	VeraSaveGui  rg;
 	GtkWidget  *dialog;
 	GtkBuilder *builder;
 	gchar      *ui_file;
@@ -506,7 +498,7 @@ static void save_dialog_response (GtkWidget *widget,
 		gint       response_id,
 		gpointer   data)
 {
-	RawSaveGui *rg = data;
+	VeraSaveGui *rg = data;
 
 	switch (response_id)
 	{
@@ -519,7 +511,7 @@ static void save_dialog_response (GtkWidget *widget,
 	}
 }
 
-static void load_gui_defaults (RawSaveGui *rg)
+static void load_gui_defaults (VeraSaveGui *rg)
 {
 	load_defaults ();
 
