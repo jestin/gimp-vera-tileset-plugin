@@ -25,9 +25,9 @@ static gboolean save_image(const gchar  *filename,
 
 typedef enum
 {
-	TILE_2BPP,
-	TILE_4BPP,
-	TILE_8BPP
+	TILE_2BPP = 2,
+	TILE_4BPP = 4,
+	TILE_8BPP = 8
 } TileBpp;
 
 typedef enum
@@ -297,43 +297,37 @@ static gboolean save_image (const gchar  *filename,
 	int t_width = width / tile_width;
 	int t_height = height / tile_height;
 
-	int tile_buf_length;
+	int tile_buf_length = ((width * height * bpp) / (8 / veravals.tile_bpp)) + 2;
+	tile_buf = g_new (guchar, tile_buf_length);
 
-	switch(veravals.tile_bpp)
+	int tile_buf_index = 2;
+
+	// 2 byte header
+	tile_buf[0] = 0;
+	tile_buf[1] = 0;
+
+	for(int y = 0; y < t_height; y++)
 	{
-		case TILE_2BPP:
-			tile_buf_length = ((width * height * bpp) / 4) + 2;
-			// TODO: Write 2BPP tile_buf
-			break;
+		int yoff = y * tile_height;
 
-		case TILE_4BPP:
-			// write out per tile, not per pixel
-			// for now assuming 4bbp and 8x8 tiles
+		for(int x = 0; x < t_width; x++)
+		{
+			int xoff = x * tile_width;
 
-			tile_buf_length = ((width * height * bpp) / 2) + 2;
-			tile_buf = g_new (guchar, tile_buf_length);
-
-			int tile_buf_index = 2;
-			tile_buf[0] = 0;
-			tile_buf[1] = 0;
-
-			for(int y = 0; y < t_height; y++)
+			// write out a single tile
+			for(int ty = 0; ty < tile_width; ty++)
 			{
-				int yoff = y * tile_height;
-
-				for(int x = 0; x < t_width; x++)
+				for(int tx = 0; tx < tile_height; tx++)
 				{
-					int xoff = x * tile_width;
+					// get the color from the buffer
+					int buf_index = ((yoff + ty) * width) + xoff + tx;
+					guchar color = buf[buf_index];
 
-					// write out a single tile
-					for(int ty = 0; ty < tile_width; ty++)
+					switch(veravals.tile_bpp)
 					{
-						for(int tx = 0; tx < tile_height; tx++)
-						{
-							// get the color from the buffer
-							int buf_index = ((yoff + ty) * width) + xoff + tx;
-							guchar color = buf[buf_index];
-
+						case TILE_2BPP:
+							break;
+						case TILE_4BPP:
 							if (buf_index % 2)
 							{
 								// odd byte
@@ -345,17 +339,14 @@ static gboolean save_image (const gchar  *filename,
 								// even byte
 								tile_buf[tile_buf_index] = color << 4;
 							}
-						}
+							break;
+						case TILE_8BPP:
+							break;
 					}
+
 				}
 			}
-
-			break;
-
-		case TILE_8BPP:
-			tile_buf_length = (width * height * bpp) + 2;
-			// TODO: Write 8BPP tile_buf
-			break;
+		}
 	}
 
 	fp = fopen (filename, "wb");
