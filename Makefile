@@ -1,10 +1,12 @@
 GIMPTOOL = gimptool-2.0
-
 PROGRAM = vera_tileset
+GCC = gcc
+CFLAGS = $(shell gimptool-2.0 --cflags)
+LIBS = $(shell gimptool-2.0 --libs)
 UI_FILE = plug-in-file-vera.ui
 
 $(PROGRAM):
-	$(GIMPTOOL) --build vera_tileset.c
+	$(GCC) $(CFLAGS) -o $(PROGRAM) vera_tileset.c $(LIBS)
 
 install: $(PROGRAM)
 	$(GIMPTOOL) --install-bin $(PROGRAM)
