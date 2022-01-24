@@ -17,9 +17,9 @@ install-ui:
 uninstall: $(PROGRAM)
 	$(GIMPTOOL) --uninstall-bin $(PROGRAM)
 
-all: install
+all: $(PROGRAM)
 
-run: all
+run: install
 	gimp
 
 tags:
