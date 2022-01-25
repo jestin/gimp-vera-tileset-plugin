@@ -3,8 +3,10 @@
 
 #include <errno.h>
 #include <string.h>
-
 #include <stdio.h>
+
+#include <libxml/encoding.h>
+#include <libxml/xmlwriter.h>
 
 #define SAVE_PROC	"file-vera-save"
 #define PLUG_IN_BINARY   "file-vera"
@@ -235,7 +237,10 @@ static void run (const gchar      *name,
 		{
 			if(veravals.tiled_file)
 			{
-				save_bmp_and_tsx(filename, GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error);
+				if(!save_bmp_and_tsx(filename, GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
+				{
+					status = GIMP_PDB_EXECUTION_ERROR;
+				}
 			}
 
 			if (save_image (filename, image_id, drawable_id, &error))
@@ -277,6 +282,75 @@ static gboolean save_bmp_and_tsx (const gchar  *filename,
 	gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
 
 	// write out the tsx file
+	gchar *tsx_filename = g_strconcat (filename, ".tsx", NULL);
+
+	int rc;
+	xmlTextWriterPtr writer;
+	xmlChar* tmp;
+
+	writer = xmlNewTextWriterFilename(tsx_filename, 0);
+	if(writer == NULL)
+	{
+		printf("could not create writer\n");
+		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
+				"Could not open '%s' for writing: %s",
+				gimp_filename_to_utf8 (filename), g_strerror (errno));
+		return FALSE;
+	}
+
+	rc = xmlTextWriterStartDocument(writer, NULL, "UTF-8", NULL);
+	if (rc < 0)
+	{
+		printf("could not create document\n");
+		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
+				"Error starting document '%s': %s",
+				gimp_filename_to_utf8 (filename), g_strerror (errno));
+		return FALSE;
+	}
+
+	GeglBuffer       *buffer;
+	gint32            width, height, tile_count, columns;
+
+	/* get info about the current image */
+	buffer = gimp_drawable_get_buffer (drawable_id);
+	width  = gegl_buffer_get_width  (buffer);
+	height = gegl_buffer_get_height (buffer);
+	
+	tile_count = (width * height) / (veravals.tile_width * veravals.tile_height);
+	columns = width / veravals.tile_width;
+
+	printf("writing tsx document\n");
+	gchar* val_string;
+
+	xmlTextWriterStartElement(writer, BAD_CAST "tileset");
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "version", BAD_CAST "1.5");
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "tiledversion", BAD_CAST "1.8.0");
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST filename);
+	sprintf(val_string, "%d", veravals.tile_width);
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "tilewidth", BAD_CAST val_string);
+	sprintf(val_string, "%d", veravals.tile_height);
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "tileheight", BAD_CAST val_string);
+	sprintf(val_string, "%d", tile_count);
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "tilecount", BAD_CAST val_string);
+	sprintf(val_string, "%d", columns);
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "columns", BAD_CAST val_string);
+
+	xmlTextWriterStartElement(writer, BAD_CAST "image");
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "source", BAD_CAST bmp_filename);
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "trans", BAD_CAST "000000");
+	sprintf(val_string, "%d", width);
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "width", BAD_CAST val_string);
+	sprintf(val_string, "%d", height);
+	xmlTextWriterWriteAttribute(writer, BAD_CAST "height", BAD_CAST val_string);
+	xmlTextWriterEndElement(writer); // image
+
+	xmlTextWriterEndElement(writer); // tileset
+
+	xmlTextWriterEndDocument(writer);
+
+	xmlFreeTextWriter(writer);
+
+	printf("finished writing tsx document\n");
 }
 
 static gboolean save_image (const gchar  *filename,
