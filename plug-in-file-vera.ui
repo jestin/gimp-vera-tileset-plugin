@@ -116,6 +116,39 @@
       </object>
     </child>
     <child>
+      <object class="GimpFrame" id="tiled-file-frame">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Tiled Tile Set</property>
+        <child>
+          <object class="GtkVBox" id="tiled-file-vbox">
+            <property name="visible">True</property>
+            <property name="spacing">2</property>
+            <child>
+              <object class="GtkRadioButton" id="tiled-file">
+                <property name="label" translatable="yes">Write Tiled tile set file</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_underline">True</property>
+                <property name="draw_indicator">True</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRadioButton" id="no-tiled-file">
+                <property name="label" translatable="yes">VERA tile file only</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_underline">True</property>
+                <property name="draw_indicator">True</property>
+                <property name="group">tiled-file</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
       <object class="GtkHButtonBox" id="hbuttonbox">
         <property name="visible">True</property>
         <property name="spacing">6</property>

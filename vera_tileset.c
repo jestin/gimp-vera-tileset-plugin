@@ -22,6 +22,12 @@ static gboolean save_image(const gchar  *filename,
 		gint32        drawable_id,
 		GError      **error);
 
+static gboolean save_bmp_and_tsx(const gchar *filename,
+		GimpRunMode   run_mode,
+		gint32        image_id,
+		gint32        drawable_id,
+		GError      **error);
+
 
 typedef enum
 {
@@ -42,11 +48,17 @@ typedef enum
 	TILE_HEIGHT_16 = 16
 } TileHeight;
 
+typedef enum{
+	NO_TILED_FILE = 0,
+	TILED_FILE = 1
+} TiledFile;
+
 typedef struct
 {
 	TileBpp        tile_bpp;     /* Bits per pixel format for tiles */
 	TileWidth      tile_width;
 	TileHeight     tile_height;
+	TiledFile      tiled_file;
 } VeraSaveVals;
 
 typedef struct
@@ -60,6 +72,8 @@ typedef struct
 	GtkWidget *tile_width_16;
 	GtkWidget *tile_height_8;
 	GtkWidget *tile_height_16;
+	GtkWidget *no_tiled_file;
+	GtkWidget *tiled_file;
 } VeraSaveGui;
 
 typedef struct
@@ -68,8 +82,9 @@ typedef struct
 	gint32         image_width;    /* width of the raw image                   */
 	gint32         image_height;   /* height of the raw image                  */
 	TileBpp        tile_bpp;       /* bits per pixel of the output             */
-	TileWidth      tile_width;
-	TileHeight     tile_height;
+	TileWidth      tile_width;     /* width of a single tile                   */
+	TileHeight     tile_height;    /* height of a single tile                  */
+	TiledFile      tiled_file;     /* whether to write a Tiled tileset file    */
 	gint32         palette_offset; /* offset inside the palette file, if any   */
 } VeraConfig;
 
@@ -85,7 +100,8 @@ static const VeraSaveVals defaults =
 {
 	TILE_4BPP,
 	TILE_WIDTH_8,
-	TILE_HEIGHT_8
+	TILE_HEIGHT_8,
+	TILED_FILE,
 };
 
 static VeraSaveVals veravals;
@@ -140,6 +156,7 @@ static void run (const gchar      *name,
 	GError            *error  = NULL;
 	gint32             image_id;
 	gint32             drawable_id;
+	gchar*             filename;
 	GimpExportReturn   export = GIMP_EXPORT_CANCEL;
 
 	// INIT_I18N ();
@@ -156,6 +173,7 @@ static void run (const gchar      *name,
 		run_mode    = param[0].data.d_int32;
 		image_id    = param[1].data.d_int32;
 		drawable_id = param[2].data.d_int32;
+		filename = param[3].data.d_string;
 
 		load_defaults ();
 
@@ -215,8 +233,12 @@ static void run (const gchar      *name,
 
 		if (status == GIMP_PDB_SUCCESS)
 		{
-			if (save_image (param[3].data.d_string,
-						image_id, drawable_id, &error))
+			if(veravals.tiled_file)
+			{
+				save_bmp_and_tsx(filename, GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error);
+			}
+
+			if (save_image (filename, image_id, drawable_id, &error))
 			{
 				gimp_set_data (SAVE_PROC, &veravals, sizeof (veravals));
 			}
@@ -242,6 +264,19 @@ static void run (const gchar      *name,
 	}
 
 	values[0].data.d_status = status;
+}
+
+static gboolean save_bmp_and_tsx (const gchar  *filename,
+		GimpRunMode   run_mode,
+		gint32        image_id,
+		gint32        drawable_id,
+		GError      **error)
+{
+	// write out a bitmap to be used with the .tsx file
+	gchar *bmp_filename = g_strconcat (filename, ".bmp", NULL);
+	gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
+
+	// write out the tsx file
 }
 
 static gboolean save_image (const gchar  *filename,
@@ -502,6 +537,16 @@ static gboolean save_dialog (gint32 image_id)
 			veravals.tile_height,
 			&veravals.tile_height);
 
+	vg.tiled_file = radio_button_init (builder, "tiled-file",
+			TILED_FILE,
+			veravals.tiled_file,
+			&veravals.tiled_file);
+
+	vg.no_tiled_file = radio_button_init (builder, "no-tiled-file",
+			NO_TILED_FILE,
+			veravals.tiled_file,
+			&veravals.tiled_file);
+
 	/* Load/save defaults buttons */
 	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
 			"clicked",
@@ -557,6 +602,9 @@ static void load_gui_defaults (VeraSaveGui *vg)
 
 	SET_ACTIVE (tile_height_8, tile_height);
 	SET_ACTIVE (tile_height_16, tile_height);
+
+	SET_ACTIVE (no_tiled_file, tile_height);
+	SET_ACTIVE (tiled_file, tile_height);
 
 #undef SET_ACTIVE
 }
