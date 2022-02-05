@@ -326,22 +326,28 @@ static gboolean save_bmp_and_tsx (const gchar  *filename,
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "version", BAD_CAST "1.5");
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "tiledversion", BAD_CAST "1.8.0");
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST filename);
-	sprintf(val_string, "%d", veravals.tile_width);
-	xmlTextWriterWriteAttribute(writer, BAD_CAST "tilewidth", BAD_CAST val_string);
-	sprintf(val_string, "%d", veravals.tile_height);
+	val_string = g_strdup_printf("%d", veravals.tile_width);
+	xmlTextWriterWriteAttribute(writer,BAD_CAST "tilewidth", BAD_CAST val_string);
+	g_free(val_string);
+	val_string = g_strdup_printf("%d", veravals.tile_height);
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "tileheight", BAD_CAST val_string);
-	sprintf(val_string, "%d", tile_count);
+	g_free(val_string);
+	val_string = g_strdup_printf("%d", tile_count);
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "tilecount", BAD_CAST val_string);
-	sprintf(val_string, "%d", columns);
+	g_free(val_string);
+	val_string = g_strdup_printf("%d", columns);
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "columns", BAD_CAST val_string);
+	g_free(val_string);
 
 	xmlTextWriterStartElement(writer, BAD_CAST "image");
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "source", BAD_CAST bmp_filename);
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "trans", BAD_CAST "000000");
-	sprintf(val_string, "%d", width);
+	val_string = g_strdup_printf("%d", width);
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "width", BAD_CAST val_string);
-	sprintf(val_string, "%d", height);
+	g_free(val_string);
+	val_string = g_strdup_printf("%d", height);
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "height", BAD_CAST val_string);
+	g_free(val_string);
 	xmlTextWriterEndElement(writer); // image
 
 	xmlTextWriterEndElement(writer); // tileset
