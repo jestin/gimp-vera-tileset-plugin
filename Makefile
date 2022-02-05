@@ -8,7 +8,7 @@ XML2CFLAGS = $(shell xml2-config --cflags)
 XML2LIBS = $(shell xml2-config --libs)
 UI_FILE = plug-in-file-vera.ui
 
-$(PROGRAM):
+$(PROGRAM): vera_tileset.c
 	$(GCC) $(GIMPCFLAGS) $(XML2CFLAGS) $(IGNORE_WARNINGS) -o $(PROGRAM) vera_tileset.c $(GIMPLIBS) $(XML2LIBS)
 
 install: $(PROGRAM)
