@@ -19,7 +19,7 @@ static void run(const gchar      *name,
 		gint             *nreturn_vals,
 		GimpParam       **return_vals);
 
-static gboolean save_image(const gchar  *filename,
+static gboolean save_tile_set(const gchar  *filename,
 		gint32        image_id,
 		gint32        drawable_id,
 		GError      **error);
@@ -59,7 +59,7 @@ typedef struct
 	gboolean       tiled_file;
 	gboolean       bmp_file;
 	gboolean       pal_file;
-} VeraSaveVals;
+} VeraTileSaveVals;
 
 typedef struct
 {
@@ -76,21 +76,7 @@ typedef struct
 	GtkWidget *tiled_file;
 	GtkWidget *bmp_file;
 	GtkWidget *pal_file;
-} VeraSaveGui;
-
-typedef struct
-{
-	gint32         file_offset;    /* offset to beginning of image in raw data */
-	gint32         image_width;    /* width of the raw image                   */
-	gint32         image_height;   /* height of the raw image                  */
-	TileBpp        tile_bpp;       /* bits per pixel of the output             */
-	TileWidth      tile_width;     /* width of a single tile                   */
-	TileHeight     tile_height;    /* height of a single tile                  */
-	gboolean       tiled_file;     /* whether to write a Tiled tileset file    */
-	gboolean       bmp_file;       /* whether to write a bmp file              */
-	gboolean       pal_file;       /* whether to write a palette file          */
-	gint32         palette_offset; /* offset inside the palette file, if any   */
-} VeraConfig;
+} VeraTileSaveGui;
 
 GimpPlugInInfo PLUG_IN_INFO =
 {
@@ -100,7 +86,7 @@ GimpPlugInInfo PLUG_IN_INFO =
 	run
 };
 
-static const VeraSaveVals defaults =
+static const VeraTileSaveVals defaults =
 {
 	TILE_4BPP,
 	TILE_WIDTH_8,
@@ -110,14 +96,14 @@ static const VeraSaveVals defaults =
 	TRUE,
 };
 
-static VeraSaveVals veravals;
-static gboolean save_dialog(gint32 image_id);
+static VeraTileSaveVals veravals;
+static gboolean save_tiles_dialog(gint32 image_id);
 static void save_dialog_response(GtkWidget *widget,
 		gint response_id,
 		gpointer data);
 static void load_defaults(void);
 static void save_defaults(void);
-static void load_gui_defaults(VeraSaveGui *vg);
+static void load_gui_defaults(VeraTileSaveGui *vg);
 
 MAIN()
 
@@ -205,7 +191,7 @@ static void run (const gchar      *name,
 				/*
 				 * Then acquire information with a dialog...
 				 */
-				if (! save_dialog (image_id))
+				if (! save_tiles_dialog (image_id))
 					status = GIMP_PDB_CANCEL;
 				break;
 
@@ -254,7 +240,7 @@ static void run (const gchar      *name,
 				}
 			}
 
-			if (save_image (filename, image_id, drawable_id, &error))
+			if (save_tile_set (filename, image_id, drawable_id, &error))
 			{
 				gimp_set_data (SAVE_PROC, &veravals, sizeof (veravals));
 			}
@@ -367,7 +353,7 @@ static gboolean save_tsx (const gchar  *filename,
 	printf("finished writing tsx document\n");
 }
 
-static gboolean save_image (const gchar  *filename,
+static gboolean save_tile_set (const gchar  *filename,
 		gint32        image_id,
 		gint32        drawable_id,
 		GError      **error)
@@ -602,9 +588,9 @@ static GtkWidget * check_button_init (GtkBuilder  *builder,
 	return radio;
 }
 
-static gboolean save_dialog (gint32 image_id)
+static gboolean save_tiles_dialog (gint32 image_id)
 {
-	VeraSaveGui  vg;
+	VeraTileSaveGui  vg;
 	GtkWidget  *dialog;
 	GtkBuilder *builder;
 	gchar      *ui_file;
@@ -624,7 +610,7 @@ static gboolean save_dialog (gint32 image_id)
 	/* GtkBuilder init */
 	builder = gtk_builder_new ();
 	ui_file = g_build_filename (gimp_data_directory (),
-			"ui/plug-ins/plug-in-file-vera.ui",
+			"ui/plug-ins/plug-in-file-vera-tiles.ui",
 			NULL);
 	if (! gtk_builder_add_from_file (builder, ui_file, &error))
 	{
@@ -713,7 +699,7 @@ static void save_dialog_response (GtkWidget *widget,
 		gint       response_id,
 		gpointer   data)
 {
-	VeraSaveGui *vg = data;
+	VeraTileSaveGui *vg = data;
 
 	switch (response_id)
 	{
@@ -726,7 +712,7 @@ static void save_dialog_response (GtkWidget *widget,
 	}
 }
 
-static void load_gui_defaults (VeraSaveGui *vg)
+static void load_gui_defaults (VeraTileSaveGui *vg)
 {
 	load_defaults ();
 
@@ -762,7 +748,7 @@ static void load_defaults (void) {
 	if (parasite)
 	{
 		gchar        *def_str;
-		VeraSaveVals   tmpvals = defaults;
+		VeraTileSaveVals   tmpvals = defaults;
 		gint          num_fields;
 
 		def_str = g_strndup (gimp_parasite_data (parasite),

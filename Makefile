@@ -6,7 +6,7 @@ GIMPLIBS = $(shell gimptool-2.0 --libs)
 IGNORE_WARNINGS = -Wno-deprecated-declarations
 XML2CFLAGS = $(shell xml2-config --cflags)
 XML2LIBS = $(shell xml2-config --libs)
-UI_FILE = plug-in-file-vera.ui
+TILE_UI_FILE = plug-in-file-vera-tiles.ui
 
 $(PROGRAM): vera_tileset.c
 	$(GCC) $(GIMPCFLAGS) $(XML2CFLAGS) $(IGNORE_WARNINGS) -o $(PROGRAM) vera_tileset.c $(GIMPLIBS) $(XML2LIBS)
@@ -15,7 +15,7 @@ install: $(PROGRAM)
 	$(GIMPTOOL) --install-bin $(PROGRAM)
 
 install-ui:
-	cp $(UI_FILE) `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(UI_FILE)
+	cp $(TILE_UI_FILE) `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(TILE_UI_FILE)
 
 uninstall: $(PROGRAM)
 	$(GIMPTOOL) --uninstall-bin $(PROGRAM)
