@@ -24,7 +24,8 @@ static gboolean save_image(const gchar  *filename,
 		gint32        drawable_id,
 		GError      **error);
 
-static gboolean save_bmp_and_tsx(const gchar *filename,
+static gboolean save_tsx(const gchar *filename,
+		const gchar *bmp_filename,
 		GimpRunMode   run_mode,
 		gint32        image_id,
 		gint32        drawable_id,
@@ -50,17 +51,13 @@ typedef enum
 	TILE_HEIGHT_16 = 16
 } TileHeight;
 
-typedef enum{
-	NO_TILED_FILE = 0,
-	TILED_FILE = 1
-} TiledFile;
-
 typedef struct
 {
 	TileBpp        tile_bpp;     /* Bits per pixel format for tiles */
 	TileWidth      tile_width;
 	TileHeight     tile_height;
-	TiledFile      tiled_file;
+	gboolean       tiled_file;
+	gboolean       bmp_file;
 } VeraSaveVals;
 
 typedef struct
@@ -76,6 +73,7 @@ typedef struct
 	GtkWidget *tile_height_16;
 	GtkWidget *no_tiled_file;
 	GtkWidget *tiled_file;
+	GtkWidget *bmp_file;
 } VeraSaveGui;
 
 typedef struct
@@ -86,7 +84,8 @@ typedef struct
 	TileBpp        tile_bpp;       /* bits per pixel of the output             */
 	TileWidth      tile_width;     /* width of a single tile                   */
 	TileHeight     tile_height;    /* height of a single tile                  */
-	TiledFile      tiled_file;     /* whether to write a Tiled tileset file    */
+	gboolean       tiled_file;     /* whether to write a Tiled tileset file    */
+	gboolean       bmp_file;       /* whether to write a bmp file              */
 	gint32         palette_offset; /* offset inside the palette file, if any   */
 } VeraConfig;
 
@@ -103,7 +102,8 @@ static const VeraSaveVals defaults =
 	TILE_4BPP,
 	TILE_WIDTH_8,
 	TILE_HEIGHT_8,
-	TILED_FILE,
+	TRUE,
+	TRUE,
 };
 
 static VeraSaveVals veravals;
@@ -235,9 +235,16 @@ static void run (const gchar      *name,
 
 		if (status == GIMP_PDB_SUCCESS)
 		{
+			gchar *bmp_filename = g_strconcat (filename, ".bmp", NULL);
+			if (veravals.bmp_file)
+			{
+				// write out a bitmap to be used with the .tsx file
+				gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
+			}
+
 			if(veravals.tiled_file)
 			{
-				if(!save_bmp_and_tsx(filename, GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
+				if(!save_tsx(filename, bmp_filename,  GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
 				{
 					status = GIMP_PDB_EXECUTION_ERROR;
 				}
@@ -271,16 +278,13 @@ static void run (const gchar      *name,
 	values[0].data.d_status = status;
 }
 
-static gboolean save_bmp_and_tsx (const gchar  *filename,
+static gboolean save_tsx (const gchar  *filename,
+		const gchar  *bmp_filename,
 		GimpRunMode   run_mode,
 		gint32        image_id,
 		gint32        drawable_id,
 		GError      **error)
 {
-	// write out a bitmap to be used with the .tsx file
-	gchar *bmp_filename = g_strconcat (filename, ".bmp", NULL);
-	gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
-
 	// write out the tsx file
 	gchar *tsx_filename = g_strconcat (filename, ".tsx", NULL);
 
@@ -546,6 +550,26 @@ static GtkWidget * radio_button_init (GtkBuilder  *builder,
 	return radio;
 }
 
+static GtkWidget * check_button_init (GtkBuilder  *builder,
+		const gchar *name,
+		gint         item_data,
+		gint         initial_value,
+		gpointer     value_pointer)
+{
+	GtkWidget *radio = NULL;
+
+	radio = GTK_WIDGET (gtk_builder_get_object (builder, name));
+	if (item_data)
+		g_object_set_data (G_OBJECT (radio), "gimp-item-data", GINT_TO_POINTER (item_data));
+	if (initial_value == item_data)
+		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (radio), TRUE);
+	g_signal_connect (radio, "toggled",
+			G_CALLBACK (gimp_toggle_button_update),
+			value_pointer);
+
+	return radio;
+}
+
 static gboolean save_dialog (gint32 image_id)
 {
 	VeraSaveGui  vg;
@@ -617,15 +641,15 @@ static gboolean save_dialog (gint32 image_id)
 			veravals.tile_height,
 			&veravals.tile_height);
 
-	vg.tiled_file = radio_button_init (builder, "tiled-file",
-			TILED_FILE,
+	vg.tiled_file = check_button_init (builder, "tiled-file",
+			TRUE,
 			veravals.tiled_file,
 			&veravals.tiled_file);
 
-	vg.no_tiled_file = radio_button_init (builder, "no-tiled-file",
-			NO_TILED_FILE,
-			veravals.tiled_file,
-			&veravals.tiled_file);
+	vg.no_tiled_file = check_button_init (builder, "bmp-file",
+			TRUE,
+			veravals.bmp_file,
+			&veravals.bmp_file);
 
 	/* Load/save defaults buttons */
 	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
@@ -683,8 +707,8 @@ static void load_gui_defaults (VeraSaveGui *vg)
 	SET_ACTIVE (tile_height_8, tile_height);
 	SET_ACTIVE (tile_height_16, tile_height);
 
-	SET_ACTIVE (no_tiled_file, tile_height);
-	SET_ACTIVE (tiled_file, tile_height);
+	SET_ACTIVE (tiled_file, tiled_file);
+	SET_ACTIVE (bmp_file, bmp_file);
 
 #undef SET_ACTIVE
 }

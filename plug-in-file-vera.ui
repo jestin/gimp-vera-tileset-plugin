@@ -118,13 +118,13 @@
     <child>
       <object class="GimpFrame" id="tiled-file-frame">
         <property name="visible">True</property>
-        <property name="label" translatable="yes">Tiled Tile Set</property>
+        <property name="label" translatable="yes">Additional Exports</property>
         <child>
           <object class="GtkVBox" id="tiled-file-vbox">
             <property name="visible">True</property>
             <property name="spacing">2</property>
             <child>
-              <object class="GtkRadioButton" id="tiled-file">
+              <object class="GtkCheckButton" id="tiled-file">
                 <property name="label" translatable="yes">Write Tiled tile set file</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -134,8 +134,8 @@
               </object>
             </child>
             <child>
-              <object class="GtkRadioButton" id="no-tiled-file">
-                <property name="label" translatable="yes">VERA tile file only</property>
+              <object class="GtkCheckButton" id="bmp-file">
+                <property name="label" translatable="yes">Write BMP file</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>
