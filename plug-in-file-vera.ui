@@ -116,11 +116,11 @@
       </object>
     </child>
     <child>
-      <object class="GimpFrame" id="tiled-file-frame">
+      <object class="GimpFrame" id="additional-exports-frame">
         <property name="visible">True</property>
         <property name="label" translatable="yes">Additional Exports</property>
         <child>
-          <object class="GtkVBox" id="tiled-file-vbox">
+          <object class="GtkVBox" id="additional-exports-vbox">
             <property name="visible">True</property>
             <property name="spacing">2</property>
             <child>
@@ -136,6 +136,17 @@
             <child>
               <object class="GtkCheckButton" id="bmp-file">
                 <property name="label" translatable="yes">Write BMP file</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_underline">True</property>
+                <property name="draw_indicator">True</property>
+                <property name="group">tiled-file</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="pal-file">
+                <property name="label" translatable="yes">Write Vera Palette file</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>

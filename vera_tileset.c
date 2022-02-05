@@ -58,6 +58,7 @@ typedef struct
 	TileHeight     tile_height;
 	gboolean       tiled_file;
 	gboolean       bmp_file;
+	gboolean       pal_file;
 } VeraSaveVals;
 
 typedef struct
@@ -74,6 +75,7 @@ typedef struct
 	GtkWidget *no_tiled_file;
 	GtkWidget *tiled_file;
 	GtkWidget *bmp_file;
+	GtkWidget *pal_file;
 } VeraSaveGui;
 
 typedef struct
@@ -86,6 +88,7 @@ typedef struct
 	TileHeight     tile_height;    /* height of a single tile                  */
 	gboolean       tiled_file;     /* whether to write a Tiled tileset file    */
 	gboolean       bmp_file;       /* whether to write a bmp file              */
+	gboolean       pal_file;       /* whether to write a palette file          */
 	gint32         palette_offset; /* offset inside the palette file, if any   */
 } VeraConfig;
 
@@ -102,6 +105,7 @@ static const VeraSaveVals defaults =
 	TILE_4BPP,
 	TILE_WIDTH_8,
 	TILE_HEIGHT_8,
+	TRUE,
 	TRUE,
 	TRUE,
 };
@@ -504,12 +508,38 @@ static gboolean save_image (const gchar  *filename,
 	}
 
 	fclose (fp);
+	g_free(tile_buf);
 
 
-	if (cmap)
+	if (cmap && veravals.pal_file)
 	{
-		/* we have colormap, too.write it into filename+pal */
-		gchar *newfile = g_strconcat (filename, ".pal", NULL);
+		guchar *pal_buf;
+		pal_buf = g_new (guchar, (palsize * 2) + 2); // 2 bytes per color, 2 byte header
+
+		// 2 byte header
+		pal_buf[0] = 0;
+		pal_buf[1] = 0;
+
+		int pal_buf_index = 2; // start past the 2 byte header
+
+		for(int i = 0; i < palsize*3; i+=3)
+		{
+			// read rgb values from colormap
+			guchar r = cmap[i];
+			guchar g = cmap[i+1];
+			guchar b = cmap[i+2];
+			
+			// write out packed g and b values
+			pal_buf[pal_buf_index] = (g & 0xf0) | ((b & 0xf0) >> 4);
+
+			// write out r value in lower nibble
+			pal_buf[pal_buf_index+1] = (r & 0xf0) >> 4;
+
+			pal_buf_index += 2;
+		}
+
+		/* we have colormap too, write it into filename+PAL.BIN */
+		gchar *newfile = g_strconcat (filename, ".PAL", NULL);
 		gchar *temp;
 
 		fp = fopen (newfile, "wb");
@@ -519,12 +549,14 @@ static gboolean save_image (const gchar  *filename,
 			g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
 					"Could not open '%s' for writing: %s",
 					gimp_filename_to_utf8 (newfile), g_strerror (errno));
+			g_free(pal_buf);
 			return FALSE;
 		}
 
-		if (!fwrite (cmap, palsize * 3, 1, fp))
+		if (!fwrite (pal_buf, (palsize * 2) + 2, 1, fp))
 			ret = FALSE;
 		fclose (fp);
+		g_free(pal_buf);
 	}
 
 	return ret;
@@ -651,6 +683,11 @@ static gboolean save_dialog (gint32 image_id)
 			veravals.bmp_file,
 			&veravals.bmp_file);
 
+	vg.no_tiled_file = check_button_init (builder, "pal-file",
+			TRUE,
+			veravals.pal_file,
+			&veravals.pal_file);
+
 	/* Load/save defaults buttons */
 	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
 			"clicked",
@@ -709,6 +746,7 @@ static void load_gui_defaults (VeraSaveGui *vg)
 
 	SET_ACTIVE (tiled_file, tiled_file);
 	SET_ACTIVE (bmp_file, bmp_file);
+	SET_ACTIVE (pal_file, pal_file);
 
 #undef SET_ACTIVE
 }
