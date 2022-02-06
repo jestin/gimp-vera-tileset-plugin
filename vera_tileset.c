@@ -31,6 +31,11 @@ static gboolean save_tsx(const gchar *filename,
 		gint32        drawable_id,
 		GError      **error);
 
+typedef enum
+{
+	TILESET = 0,
+	BITMAP = 1
+} VeraExport;
 
 typedef enum
 {
@@ -53,18 +58,20 @@ typedef enum
 
 typedef struct
 {
+	VeraExport     export_type;	 /* tileset or bitmap */
 	TileBpp        tile_bpp;     /* Bits per pixel format for tiles */
 	TileWidth      tile_width;
 	TileHeight     tile_height;
 	gboolean       tiled_file;
 	gboolean       bmp_file;
 	gboolean       pal_file;
-} VeraTileSaveVals;
+} VeraSaveVals;
 
 typedef struct
 {
 	gboolean   run;
 
+	// tile dialog
 	GtkWidget *tile_2bpp;
 	GtkWidget *tile_4bpp;
 	GtkWidget *tile_8bpp;
@@ -76,7 +83,11 @@ typedef struct
 	GtkWidget *tiled_file;
 	GtkWidget *bmp_file;
 	GtkWidget *pal_file;
-} VeraTileSaveGui;
+
+	// selector dialog
+	GtkWidget *tileset_export;
+	GtkWidget *bitmap_export;
+} VeraSaveGui;
 
 GimpPlugInInfo PLUG_IN_INFO =
 {
@@ -86,24 +97,26 @@ GimpPlugInInfo PLUG_IN_INFO =
 	run
 };
 
-static const VeraTileSaveVals defaults =
+static const VeraSaveVals defaults =
 {
+	TILESET,
 	TILE_4BPP,
 	TILE_WIDTH_8,
 	TILE_HEIGHT_8,
 	TRUE,
 	TRUE,
-	TRUE,
+	TRUE
 };
 
-static VeraTileSaveVals veravals;
+static VeraSaveVals veravals;
 static gboolean save_tiles_dialog(gint32 image_id);
+static gboolean save_selector_dialog(gint32 image_id);
 static void save_dialog_response(GtkWidget *widget,
 		gint response_id,
 		gpointer data);
 static void load_defaults(void);
 static void save_defaults(void);
-static void load_gui_defaults(VeraTileSaveGui *vg);
+static void load_gui_defaults(VeraSaveGui *vg);
 
 MAIN()
 
@@ -180,6 +193,25 @@ static void run (const gchar      *name,
 			return;
 		}
 
+		switch(run_mode) 
+		{
+			case GIMP_RUN_INTERACTIVE:
+				/*
+				 * Possibly retrieve data...
+				 */
+				gimp_get_data (SAVE_PROC, &veravals);
+
+				/*
+				 * Then acquire information with a dialog...
+				 */
+				if (!save_selector_dialog (image_id))
+				{
+					values[0].data.d_status = GIMP_PDB_CANCEL;
+					return;
+				}
+				break;
+		}
+
 		switch (run_mode)
 		{
 			case GIMP_RUN_INTERACTIVE:
@@ -191,23 +223,39 @@ static void run (const gchar      *name,
 				/*
 				 * Then acquire information with a dialog...
 				 */
-				if (! save_tiles_dialog (image_id))
-					status = GIMP_PDB_CANCEL;
+				
+				switch(veravals.export_type)
+				{
+					case TILESET:
+						if (!save_tiles_dialog (image_id))
+							status = GIMP_PDB_CANCEL;
+						break;
+					case BITMAP:
+						// TODO: bitmap export here
+						break;
+				}
+
 				break;
 
 			case GIMP_RUN_NONINTERACTIVE:
 				/*
 				 * Make sure all the arguments are there!
 				 */
-				if (nparams != 5)
+				if (nparams != 10)
 				{
-					if (nparams != 7)
+					if (nparams != 12)
 					{
 						status = GIMP_PDB_CALLING_ERROR;
 					}
 					else
 					{
-						veravals.tile_bpp   = param[5].data.d_int32;
+						veravals.export_type = param[5].data.d_int32;
+						veravals.tile_bpp    = param[6].data.d_int32;
+						veravals.tile_width  = param[7].data.d_int32;
+						veravals.tile_height = param[8].data.d_int32;
+						veravals.tiled_file  = param[9].data.d_int32;
+						veravals.bmp_file    = param[10].data.d_int32;
+						veravals.pal_file    = param[11].data.d_int32;
 					}
 				}
 				break;
@@ -590,7 +638,7 @@ static GtkWidget * check_button_init (GtkBuilder  *builder,
 
 static gboolean save_tiles_dialog (gint32 image_id)
 {
-	VeraTileSaveGui  vg;
+	VeraSaveGui  vg;
 	GtkWidget  *dialog;
 	GtkBuilder *builder;
 	gchar      *ui_file;
@@ -695,11 +743,70 @@ static gboolean save_tiles_dialog (gint32 image_id)
 	return vg.run;
 }
 
+static gboolean save_selector_dialog (gint32 image_id)
+{
+	VeraSaveGui  vg;
+	GtkWidget  *dialog;
+	GtkBuilder *builder;
+	gchar      *ui_file;
+	GError     *error = NULL;
+
+	gimp_ui_init (PLUG_IN_BINARY, TRUE);
+
+	/* Dialog init */
+	dialog = gimp_export_dialog_new ("VERA Image Data", PLUG_IN_BINARY, SAVE_PROC);
+	g_signal_connect (dialog, "response",
+			G_CALLBACK (save_dialog_response),
+			&vg);
+	g_signal_connect (dialog, "destroy",
+			G_CALLBACK (gtk_main_quit),
+			NULL);
+
+	/* GtkBuilder init */
+	builder = gtk_builder_new ();
+	ui_file = g_build_filename (gimp_data_directory (),
+			"ui/plug-ins/plug-in-file-vera-selector.ui",
+			NULL);
+	if (! gtk_builder_add_from_file (builder, ui_file, &error))
+	{
+		gchar *display_name = g_filename_display_name (ui_file);
+		g_printerr ("Error loading UI file '%s': %s",
+				display_name, error ? error->message : "Unknown error");
+		g_free (display_name);
+	}
+
+	g_free (ui_file);
+
+	/* VBox */
+	gtk_box_pack_start (GTK_BOX (gimp_export_dialog_get_content_area (dialog)),
+			GTK_WIDGET (gtk_builder_get_object (builder, "vbox")),
+			FALSE, FALSE, 0);
+
+	/* Radios */
+	vg.tileset_export = radio_button_init (builder, "vera-tileset",
+			TILESET,
+			veravals.export_type,
+			&veravals.export_type);
+	vg.bitmap_export = radio_button_init (builder, "vera-bitmap",
+			BITMAP,
+			veravals.export_type,
+			&veravals.export_type);
+
+	/* Show dialog and run */
+	gtk_widget_show (dialog);
+
+	vg.run = FALSE;
+
+	gtk_main ();
+
+	return vg.run;
+}
+
 static void save_dialog_response (GtkWidget *widget,
 		gint       response_id,
 		gpointer   data)
 {
-	VeraTileSaveGui *vg = data;
+	VeraSaveGui *vg = data;
 
 	switch (response_id)
 	{
@@ -712,7 +819,7 @@ static void save_dialog_response (GtkWidget *widget,
 	}
 }
 
-static void load_gui_defaults (VeraTileSaveGui *vg)
+static void load_gui_defaults (VeraSaveGui *vg)
 {
 	load_defaults ();
 
@@ -720,6 +827,7 @@ static void load_gui_defaults (VeraTileSaveGui *vg)
 	if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (vg->field), "gimp-item-data")) == veravals.datafield) \
 	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (vg->field), TRUE)
 
+	// tile dialog
 	SET_ACTIVE (tile_2bpp, tile_bpp);
 	SET_ACTIVE (tile_4bpp, tile_bpp);
 	SET_ACTIVE (tile_8bpp, tile_bpp);
@@ -733,6 +841,10 @@ static void load_gui_defaults (VeraTileSaveGui *vg)
 	SET_ACTIVE (tiled_file, tiled_file);
 	SET_ACTIVE (bmp_file, bmp_file);
 	SET_ACTIVE (pal_file, pal_file);
+
+	// selector dialog
+	SET_ACTIVE (tileset_export, export_type);
+	SET_ACTIVE (bitmap_export, export_type);
 
 #undef SET_ACTIVE
 }
@@ -748,7 +860,7 @@ static void load_defaults (void) {
 	if (parasite)
 	{
 		gchar        *def_str;
-		VeraTileSaveVals   tmpvals = defaults;
+		VeraSaveVals   tmpvals = defaults;
 		gint          num_fields;
 
 		def_str = g_strndup (gimp_parasite_data (parasite),
@@ -756,11 +868,18 @@ static void load_defaults (void) {
 
 		gimp_parasite_free (parasite);
 
-		num_fields = sscanf (def_str, "%d", (int *) &tmpvals.tile_bpp);
+		num_fields = sscanf (def_str, "%d %d %d %d %d %d %d",
+				(int *) &tmpvals.export_type,
+				(int *) &tmpvals.tile_bpp,
+				(int *) &tmpvals.tile_width,
+				(int *) &tmpvals.tile_height,
+				(int *) &tmpvals.tiled_file,
+				(int *) &tmpvals.bmp_file,
+				(int *) &tmpvals.pal_file);
 
 		g_free (def_str);
 
-		if (num_fields == 2)
+		if (num_fields == 7)
 			veravals = tmpvals;
 	}
 }
@@ -770,7 +889,14 @@ static void save_defaults (void)
 	GimpParasite *parasite;
 	gchar        *def_str;
 
-	def_str = g_strdup_printf ("%d", veravals.tile_bpp);
+	def_str = g_strdup_printf ("%d %d %d %d %d %d %d",
+				veravals.export_type,
+				veravals.tile_bpp,
+				veravals.tile_width,
+				veravals.tile_height,
+				veravals.tiled_file,
+				veravals.bmp_file,
+				veravals.pal_file);
 
 	parasite = gimp_parasite_new (VERA_DEFAULTS_PARASITE,
 			GIMP_PARASITE_PERSISTENT,

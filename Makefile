@@ -7,6 +7,7 @@ IGNORE_WARNINGS = -Wno-deprecated-declarations
 XML2CFLAGS = $(shell xml2-config --cflags)
 XML2LIBS = $(shell xml2-config --libs)
 TILE_UI_FILE = plug-in-file-vera-tiles.ui
+SELECTOR_UI_FILE = plug-in-file-vera-selector.ui
 
 $(PROGRAM): vera_tileset.c
 	$(GCC) $(GIMPCFLAGS) $(XML2CFLAGS) $(IGNORE_WARNINGS) -o $(PROGRAM) vera_tileset.c $(GIMPLIBS) $(XML2LIBS)
@@ -16,9 +17,12 @@ install: $(PROGRAM)
 
 install-ui:
 	cp $(TILE_UI_FILE) `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(TILE_UI_FILE)
+	cp $(SELECTOR_UI_FILE) `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(SELECTOR_UI_FILE)
 
 uninstall: $(PROGRAM)
 	$(GIMPTOOL) --uninstall-bin $(PROGRAM)
+	rm `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(TILE_UI_FILE)
+	rm `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(SELECTOR_UI_FILE)
 
 all: $(PROGRAM)
 
