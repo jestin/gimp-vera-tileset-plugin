@@ -24,11 +24,21 @@ static gboolean save_tile_set(const gchar  *filename,
 		gint32        drawable_id,
 		GError      **error);
 
+static gboolean save_bitmap(const gchar  *filename,
+		gint32        image_id,
+		gint32        drawable_id,
+		GError      **error);
+
 static gboolean save_tsx(const gchar *filename,
 		const gchar *bmp_filename,
 		GimpRunMode   run_mode,
 		gint32        image_id,
 		gint32        drawable_id,
+		GError      **error);
+
+static gboolean save_palette(const gchar *filename,
+		const guchar      *cmap,
+		const gint        palsize,
 		GError      **error);
 
 typedef enum
@@ -110,6 +120,7 @@ static const VeraSaveVals defaults =
 
 static VeraSaveVals veravals;
 static gboolean save_tiles_dialog(gint32 image_id);
+static gboolean save_bitmap_dialog(gint32 image_id);
 static gboolean save_selector_dialog(gint32 image_id);
 static void save_dialog_response(GtkWidget *widget,
 		gint response_id,
@@ -223,7 +234,7 @@ static void run (const gchar      *name,
 				/*
 				 * Then acquire information with a dialog...
 				 */
-				
+
 				switch(veravals.export_type)
 				{
 					case TILESET:
@@ -231,7 +242,8 @@ static void run (const gchar      *name,
 							status = GIMP_PDB_CANCEL;
 						break;
 					case BITMAP:
-						// TODO: bitmap export here
+						if (!save_bitmap_dialog (image_id))
+							status = GIMP_PDB_CANCEL;
 						break;
 				}
 
@@ -288,14 +300,30 @@ static void run (const gchar      *name,
 				}
 			}
 
-			if (save_tile_set (filename, image_id, drawable_id, &error))
+			switch(veravals.export_type)
 			{
-				gimp_set_data (SAVE_PROC, &veravals, sizeof (veravals));
+				case TILESET:
+					if (save_tile_set (filename, image_id, drawable_id, &error))
+					{
+						gimp_set_data (SAVE_PROC, &veravals, sizeof (veravals));
+					}
+					else
+					{
+						status = GIMP_PDB_EXECUTION_ERROR;
+					}
+					break;
+				case BITMAP:
+					if (save_bitmap (filename, image_id, drawable_id, &error))
+					{
+						gimp_set_data (SAVE_PROC, &veravals, sizeof (veravals));
+					}
+					else
+					{
+						status = GIMP_PDB_EXECUTION_ERROR;
+					}
+					break;
 			}
-			else
-			{
-				status = GIMP_PDB_EXECUTION_ERROR;
-			}
+
 		}
 
 		if (export == GIMP_EXPORT_EXPORT)
@@ -357,7 +385,7 @@ static gboolean save_tsx (const gchar  *filename,
 	buffer = gimp_drawable_get_buffer (drawable_id);
 	width  = gegl_buffer_get_width  (buffer);
 	height = gegl_buffer_get_height (buffer);
-	
+
 	tile_count = (width * height) / (veravals.tile_width * veravals.tile_height);
 	columns = width / veravals.tile_width;
 
@@ -547,53 +575,209 @@ static gboolean save_tile_set (const gchar  *filename,
 
 	if (cmap && veravals.pal_file)
 	{
-		guchar *pal_buf;
-		pal_buf = g_new (guchar, (palsize * 2) + 2); // 2 bytes per color, 2 byte header
-
-		// 2 byte header
-		pal_buf[0] = 0;
-		pal_buf[1] = 0;
-
-		int pal_buf_index = 2; // start past the 2 byte header
-
-		for(int i = 0; i < palsize*3; i+=3)
+		if(!save_palette(filename, cmap, palsize, error))
 		{
-			// read rgb values from colormap
-			guchar r = cmap[i];
-			guchar g = cmap[i+1];
-			guchar b = cmap[i+2];
-			
-			// write out packed g and b values
-			pal_buf[pal_buf_index] = (g & 0xf0) | ((b & 0xf0) >> 4);
-
-			// write out r value in lower nibble
-			pal_buf[pal_buf_index+1] = (r & 0xf0) >> 4;
-
-			pal_buf_index += 2;
-		}
-
-		/* we have colormap too, write it into filename+PAL.BIN */
-		gchar *newfile = g_strconcat (filename, ".PAL", NULL);
-		gchar *temp;
-
-		fp = fopen (newfile, "wb");
-
-		if (! fp)
-		{
-			g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
-					"Could not open '%s' for writing: %s",
-					gimp_filename_to_utf8 (newfile), g_strerror (errno));
-			g_free(pal_buf);
 			return FALSE;
 		}
-
-		if (!fwrite (pal_buf, (palsize * 2) + 2, 1, fp))
-			ret = FALSE;
-		fclose (fp);
-		g_free(pal_buf);
 	}
 
 	return ret;
+}
+
+static gboolean save_bitmap (const gchar  *filename,
+		gint32        image_id,
+		gint32        drawable_id,
+		GError      **error)
+{
+	GeglBuffer       *buffer;
+	const Babl       *format = NULL;
+	guchar           *cmap   = NULL;  /* colormap for indexed images */
+	guchar           *buf;
+	guchar           *bitmap_buf;
+	guchar           *components[4] = { 0, };
+	gint              n_components;
+	gint32            width, height, bpp;
+	FILE             *fp = NULL;
+	gint              i, j, c;
+	gint              palsize = 0;
+	gboolean          ret = FALSE;
+
+	/* get info about the current image */
+	buffer = gimp_drawable_get_buffer (drawable_id);
+
+	switch (gimp_drawable_type (drawable_id))
+	{
+		case GIMP_INDEXED_IMAGE:
+		case GIMP_INDEXEDA_IMAGE:
+			format = gimp_drawable_get_format (drawable_id);
+			break;
+	}
+
+	n_components = babl_format_get_n_components (format);
+	bpp          = babl_format_get_bytes_per_pixel (format);
+
+	if (gimp_drawable_is_indexed (drawable_id))
+	{
+		cmap = gimp_image_get_colormap (image_id, &palsize);
+	}
+
+	width  = gegl_buffer_get_width  (buffer);
+	height = gegl_buffer_get_height (buffer);
+
+	buf = g_new (guchar, width * height * bpp);
+
+	gegl_buffer_get (buffer, GEGL_RECTANGLE (0, 0, width, height), 1.0,
+			format, buf,
+			GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
+
+	g_object_unref (buffer);
+
+	int bitmap_buf_length = ((width * height * bpp) / (8 / veravals.tile_bpp)) + 2;
+	bitmap_buf = g_new (guchar, bitmap_buf_length);
+
+	int bitmap_buf_index = 2;
+
+	// 2 byte header
+	bitmap_buf[0] = 0;
+	bitmap_buf[1] = 0;
+
+	// TODO: populate bitmap_buf
+	// write the whole file
+	for(int y = 0; y < height; y++)
+	{
+		for(int x = 0; x < width; x++)
+		{
+			// get the color from the buffer
+			int buf_index = (width * y) + x;
+			guchar color = buf[buf_index];
+
+			switch(veravals.tile_bpp)
+			{
+				case TILE_2BPP:
+					switch(buf_index % 4)
+					{
+						case 0:
+							bitmap_buf[bitmap_buf_index] = color << 6;
+							break;
+						case 1:
+							bitmap_buf[bitmap_buf_index] |= color << 4;
+							break;
+						case 2:
+							bitmap_buf[bitmap_buf_index] |= color << 2;
+							break;
+						case 3:
+							bitmap_buf[bitmap_buf_index] |= color;
+							bitmap_buf_index++;
+							break;
+					}
+					break;
+				case TILE_4BPP:
+					if (buf_index % 2)
+					{
+						// odd byte
+						bitmap_buf[bitmap_buf_index] |= color;
+						bitmap_buf_index++;
+					}
+					else
+					{
+						// even byte
+						bitmap_buf[bitmap_buf_index] = color << 4;
+					}
+					break;
+				case TILE_8BPP:
+					bitmap_buf[bitmap_buf_index] = color;
+					bitmap_buf_index++;
+					break;
+			}
+
+		}
+	}
+
+	fp = fopen (filename, "wb");
+
+	if (! fp)
+	{
+		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
+				"Could not open '%s' for writing: %s",
+				gimp_filename_to_utf8 (filename), g_strerror (errno));
+		return FALSE;
+	}
+
+	ret = TRUE;
+
+	if (! fwrite (bitmap_buf, bitmap_buf_length, 1, fp))
+	{
+		return FALSE;
+	}
+
+	fclose (fp);
+	g_free(bitmap_buf);
+
+
+	if (cmap && veravals.pal_file)
+	{
+		if(!save_palette(filename, cmap, palsize, error))
+		{
+			return FALSE;
+		}
+	}
+
+	return ret;
+}
+
+static gboolean save_palette(const gchar *filename,
+		const guchar      *cmap,
+		const gint        palsize,
+		GError            **error)
+{
+	FILE       *fp = NULL;
+	gboolean   ret = FALSE;
+	guchar     *pal_buf;
+	pal_buf = g_new (guchar, (palsize * 2) + 2); // 2 bytes per color, 2 byte header
+
+	// 2 byte header
+	pal_buf[0] = 0;
+	pal_buf[1] = 0;
+
+	int pal_buf_index = 2; // start past the 2 byte header
+
+	for(int i = 0; i < palsize*3; i+=3)
+	{
+		// read rgb values from colormap
+		guchar r = cmap[i];
+		guchar g = cmap[i+1];
+		guchar b = cmap[i+2];
+
+		// write out packed g and b values
+		pal_buf[pal_buf_index] = (g & 0xf0) | ((b & 0xf0) >> 4);
+
+		// write out r value in lower nibble
+		pal_buf[pal_buf_index+1] = (r & 0xf0) >> 4;
+
+		pal_buf_index += 2;
+	}
+
+	/* we have colormap too, write it into filename+PAL.BIN */
+	gchar *newfile = g_strconcat (filename, ".PAL", NULL);
+	gchar *temp;
+
+	fp = fopen (newfile, "wb");
+
+	if (! fp)
+	{
+		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
+				"Could not open '%s' for writing: %s",
+				gimp_filename_to_utf8 (newfile), g_strerror (errno));
+		g_free(pal_buf);
+		return FALSE;
+	}
+
+	if (!fwrite (pal_buf, (palsize * 2) + 2, 1, fp))
+		ret = FALSE;
+	fclose (fp);
+	g_free(pal_buf);
+
+	return TRUE;
 }
 
 static GtkWidget * radio_button_init (GtkBuilder  *builder,
@@ -711,6 +895,90 @@ static gboolean save_tiles_dialog (gint32 image_id)
 			TRUE,
 			veravals.tiled_file,
 			&veravals.tiled_file);
+
+	vg.no_tiled_file = check_button_init (builder, "bmp-file",
+			TRUE,
+			veravals.bmp_file,
+			&veravals.bmp_file);
+
+	vg.no_tiled_file = check_button_init (builder, "pal-file",
+			TRUE,
+			veravals.pal_file,
+			&veravals.pal_file);
+
+	/* Load/save defaults buttons */
+	g_signal_connect_swapped (gtk_builder_get_object (builder, "load-defaults"),
+			"clicked",
+			G_CALLBACK (load_gui_defaults),
+			&vg);
+
+	g_signal_connect_swapped (gtk_builder_get_object (builder, "save-defaults"),
+			"clicked",
+			G_CALLBACK (save_defaults),
+			&vg);
+
+	/* Show dialog and run */
+	gtk_widget_show (dialog);
+
+	vg.run = FALSE;
+
+	gtk_main ();
+
+	return vg.run;
+}
+
+static gboolean save_bitmap_dialog (gint32 image_id)
+{
+	VeraSaveGui  vg;
+	GtkWidget  *dialog;
+	GtkBuilder *builder;
+	gchar      *ui_file;
+	GError     *error = NULL;
+
+	gimp_ui_init (PLUG_IN_BINARY, TRUE);
+
+	/* Dialog init */
+	dialog = gimp_export_dialog_new ("VERA Tile Data", PLUG_IN_BINARY, SAVE_PROC);
+	g_signal_connect (dialog, "response",
+			G_CALLBACK (save_dialog_response),
+			&vg);
+	g_signal_connect (dialog, "destroy",
+			G_CALLBACK (gtk_main_quit),
+			NULL);
+
+	/* GtkBuilder init */
+	builder = gtk_builder_new ();
+	ui_file = g_build_filename (gimp_data_directory (),
+			"ui/plug-ins/plug-in-file-vera-bitmap.ui",
+			NULL);
+	if (! gtk_builder_add_from_file (builder, ui_file, &error))
+	{
+		gchar *display_name = g_filename_display_name (ui_file);
+		g_printerr ("Error loading UI file '%s': %s",
+				display_name, error ? error->message : "Unknown error");
+		g_free (display_name);
+	}
+
+	g_free (ui_file);
+
+	/* VBox */
+	gtk_box_pack_start (GTK_BOX (gimp_export_dialog_get_content_area (dialog)),
+			GTK_WIDGET (gtk_builder_get_object (builder, "vbox")),
+			FALSE, FALSE, 0);
+
+	/* Radios */
+	vg.tile_2bpp = radio_button_init (builder, "tile-bpp-2",
+			TILE_2BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
+	vg.tile_4bpp = radio_button_init (builder, "tile-bpp-4",
+			TILE_4BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
+	vg.tile_8bpp = radio_button_init (builder, "tile-bpp-8",
+			TILE_8BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
 
 	vg.no_tiled_file = check_button_init (builder, "bmp-file",
 			TRUE,
@@ -890,13 +1158,13 @@ static void save_defaults (void)
 	gchar        *def_str;
 
 	def_str = g_strdup_printf ("%d %d %d %d %d %d %d",
-				veravals.export_type,
-				veravals.tile_bpp,
-				veravals.tile_width,
-				veravals.tile_height,
-				veravals.tiled_file,
-				veravals.bmp_file,
-				veravals.pal_file);
+			veravals.export_type,
+			veravals.tile_bpp,
+			veravals.tile_width,
+			veravals.tile_height,
+			veravals.tiled_file,
+			veravals.bmp_file,
+			veravals.pal_file);
 
 	parasite = gimp_parasite_new (VERA_DEFAULTS_PARASITE,
 			GIMP_PARASITE_PERSISTENT,
