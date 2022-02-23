@@ -78,6 +78,28 @@
                 <property name="group">tile-width-8</property>
               </object>
             </child>
+            <child>
+              <object class="GtkRadioButton" id="tile-width-32">
+                <property name="label" translatable="yes">32 pixels (Sprites Only)</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_underline">True</property>
+                <property name="draw_indicator">True</property>
+                <property name="group">tile-width-8</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRadioButton" id="tile-width-64">
+                <property name="label" translatable="yes">64 pixels (Sprites Only)</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_underline">True</property>
+                <property name="draw_indicator">True</property>
+                <property name="group">tile-width-8</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>
@@ -103,6 +125,28 @@
             <child>
               <object class="GtkRadioButton" id="tile-height-16">
                 <property name="label" translatable="yes">16 pixels</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_underline">True</property>
+                <property name="draw_indicator">True</property>
+                <property name="group">tile-height-8</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRadioButton" id="tile-height-32">
+                <property name="label" translatable="yes">32 pixels (Sprites Only)</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="use_underline">True</property>
+                <property name="draw_indicator">True</property>
+                <property name="group">tile-height-8</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkRadioButton" id="tile-height-64">
+                <property name="label" translatable="yes">64 pixels (Sprites Only)</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>

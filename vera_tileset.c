@@ -57,13 +57,17 @@ typedef enum
 typedef enum
 {
 	TILE_WIDTH_8 = 8,
-	TILE_WIDTH_16 = 16
+	TILE_WIDTH_16 = 16,
+	TILE_WIDTH_32 = 32,
+	TILE_WIDTH_64 = 64
 } TileWidth;
 
 typedef enum
 {
 	TILE_HEIGHT_8 = 8,
-	TILE_HEIGHT_16 = 16
+	TILE_HEIGHT_16 = 16,
+	TILE_HEIGHT_32 = 32,
+	TILE_HEIGHT_64 = 64
 } TileHeight;
 
 typedef struct
@@ -87,8 +91,12 @@ typedef struct
 	GtkWidget *tile_8bpp;
 	GtkWidget *tile_width_8;
 	GtkWidget *tile_width_16;
+	GtkWidget *tile_width_32;
+	GtkWidget *tile_width_64;
 	GtkWidget *tile_height_8;
 	GtkWidget *tile_height_16;
+	GtkWidget *tile_height_32;
+	GtkWidget *tile_height_64;
 	GtkWidget *no_tiled_file;
 	GtkWidget *tiled_file;
 	GtkWidget *bmp_file;
@@ -881,6 +889,14 @@ static gboolean save_tiles_dialog (gint32 image_id)
 			TILE_WIDTH_16,
 			veravals.tile_width,
 			&veravals.tile_width);
+	vg.tile_width_32 = radio_button_init (builder, "tile-width-32",
+			TILE_WIDTH_32,
+			veravals.tile_width,
+			&veravals.tile_width);
+	vg.tile_width_64 = radio_button_init (builder, "tile-width-64",
+			TILE_WIDTH_64,
+			veravals.tile_width,
+			&veravals.tile_width);
 
 	vg.tile_height_8 = radio_button_init (builder, "tile-height-8",
 			TILE_HEIGHT_8,
@@ -888,6 +904,14 @@ static gboolean save_tiles_dialog (gint32 image_id)
 			&veravals.tile_height);
 	vg.tile_height_16 = radio_button_init (builder, "tile-height-16",
 			TILE_HEIGHT_16,
+			veravals.tile_height,
+			&veravals.tile_height);
+	vg.tile_height_32 = radio_button_init (builder, "tile-height-32",
+			TILE_HEIGHT_32,
+			veravals.tile_height,
+			&veravals.tile_height);
+	vg.tile_height_64 = radio_button_init (builder, "tile-height-64",
+			TILE_HEIGHT_64,
 			veravals.tile_height,
 			&veravals.tile_height);
 
@@ -1102,9 +1126,13 @@ static void load_gui_defaults (VeraSaveGui *vg)
 
 	SET_ACTIVE (tile_width_8, tile_width);
 	SET_ACTIVE (tile_width_16, tile_width);
+	SET_ACTIVE (tile_width_32, tile_width);
+	SET_ACTIVE (tile_width_64, tile_width);
 
 	SET_ACTIVE (tile_height_8, tile_height);
 	SET_ACTIVE (tile_height_16, tile_height);
+	SET_ACTIVE (tile_height_32, tile_height);
+	SET_ACTIVE (tile_height_64, tile_height);
 
 	SET_ACTIVE (tiled_file, tiled_file);
 	SET_ACTIVE (bmp_file, bmp_file);
