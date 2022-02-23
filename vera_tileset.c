@@ -500,9 +500,9 @@ static gboolean save_tile_set (const gchar  *filename,
 			int xoff = x * tile_width;
 
 			// write out a single tile
-			for(int ty = 0; ty < tile_width; ty++)
+			for(int ty = 0; ty < tile_height; ty++)
 			{
-				for(int tx = 0; tx < tile_height; tx++)
+				for(int tx = 0; tx < tile_width; tx++)
 				{
 					// get the color from the buffer
 					int buf_index = ((yoff + ty) * width) + xoff + tx;
