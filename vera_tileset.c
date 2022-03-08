@@ -49,6 +49,7 @@ typedef enum
 
 typedef enum
 {
+	TILE_1BPP = 1,
 	TILE_2BPP = 2,
 	TILE_4BPP = 4,
 	TILE_8BPP = 8
@@ -86,6 +87,7 @@ typedef struct
 	gboolean   run;
 
 	// tile dialog
+	GtkWidget *tile_1bpp;
 	GtkWidget *tile_2bpp;
 	GtkWidget *tile_4bpp;
 	GtkWidget *tile_8bpp;
@@ -518,6 +520,37 @@ static gboolean save_tile_set (const gchar  *filename,
 
 					switch(veravals.tile_bpp)
 					{
+						case TILE_1BPP:
+							switch(buf_index % 8)
+							{
+								case 0:
+									tile_buf[tile_buf_index] = color << 7;
+									break;
+								case 1:
+									tile_buf[tile_buf_index] |= color << 6;
+									break;
+								case 2:
+									tile_buf[tile_buf_index] |= color << 5;
+									break;
+								case 3:
+									tile_buf[tile_buf_index] |= color << 4;
+									break;
+								case 4:
+									tile_buf[tile_buf_index] |= color << 3;
+									break;
+								case 5:
+									tile_buf[tile_buf_index] |= color << 2;
+									break;
+								case 6:
+									tile_buf[tile_buf_index] |= color << 1;
+									break;
+								case 7:
+									tile_buf[tile_buf_index] |= color;
+									tile_buf_index++;
+									break;
+							}
+							break;
+
 						case TILE_2BPP:
 							switch(buf_index % 4)
 							{
@@ -661,6 +694,37 @@ static gboolean save_bitmap (const gchar  *filename,
 
 			switch(veravals.tile_bpp)
 			{
+				case TILE_1BPP:
+					switch(buf_index % 8)
+					{
+						case 0:
+							bitmap_buf[bitmap_buf_index] = color << 7;
+							break;
+						case 1:
+							bitmap_buf[bitmap_buf_index] |= color << 6;
+							break;
+						case 2:
+							bitmap_buf[bitmap_buf_index] |= color << 5;
+							break;
+						case 3:
+							bitmap_buf[bitmap_buf_index] |= color << 4;
+							break;
+						case 4:
+							bitmap_buf[bitmap_buf_index] |= color << 3;
+							break;
+						case 5:
+							bitmap_buf[bitmap_buf_index] |= color << 2;
+							break;
+						case 6:
+							bitmap_buf[bitmap_buf_index] |= color << 1;
+							break;
+						case 7:
+							bitmap_buf[bitmap_buf_index] |= color;
+							bitmap_buf_index++;
+							break;
+					}
+					break;
+
 				case TILE_2BPP:
 					switch(buf_index % 4)
 					{
@@ -868,6 +932,10 @@ static gboolean save_tiles_dialog (gint32 image_id)
 			FALSE, FALSE, 0);
 
 	/* Radios */
+	vg.tile_1bpp = radio_button_init (builder, "tile-bpp-1",
+			TILE_1BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
 	vg.tile_2bpp = radio_button_init (builder, "tile-bpp-2",
 			TILE_2BPP,
 			veravals.tile_bpp,
@@ -991,6 +1059,10 @@ static gboolean save_bitmap_dialog (gint32 image_id)
 			FALSE, FALSE, 0);
 
 	/* Radios */
+	vg.tile_1bpp = radio_button_init (builder, "tile-bpp-1",
+			TILE_1BPP,
+			veravals.tile_bpp,
+			&veravals.tile_bpp);
 	vg.tile_2bpp = radio_button_init (builder, "tile-bpp-2",
 			TILE_2BPP,
 			veravals.tile_bpp,
@@ -1120,6 +1192,7 @@ static void load_gui_defaults (VeraSaveGui *vg)
 	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (vg->field), TRUE)
 
 	// tile dialog
+	SET_ACTIVE (tile_1bpp, tile_bpp);
 	SET_ACTIVE (tile_2bpp, tile_bpp);
 	SET_ACTIVE (tile_4bpp, tile_bpp);
 	SET_ACTIVE (tile_8bpp, tile_bpp);
