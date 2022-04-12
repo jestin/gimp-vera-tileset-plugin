@@ -145,11 +145,18 @@ static void query (void)
 {
 	static const GimpParamDef save_args[] =
 	{
-		{ GIMP_PDB_INT32,    "run-mode",     "The run mode { RUN-INTERACTIVE (0), RUN-NONINTERACTIVE (1) }" },
-		{ GIMP_PDB_IMAGE,    "image",        "Input image" },
-		{ GIMP_PDB_DRAWABLE, "drawable",     "Drawable to export" },
-		{ GIMP_PDB_STRING,   "filename",     "The name of the file to export the image in" },
-		{ GIMP_PDB_STRING,   "raw-filename", "The name of the file to export the image in" }
+		{ GIMP_PDB_INT32,    "run-mode",	"The run mode { RUN-INTERACTIVE (0), RUN-NONINTERACTIVE (1) }" },
+		{ GIMP_PDB_IMAGE,    "image",		"Input image" },
+		{ GIMP_PDB_DRAWABLE, "drawable",	"Drawable to export" },
+		{ GIMP_PDB_STRING,   "filename",	"The name of the file to export the image to" },
+		{ GIMP_PDB_STRING,   "raw-filename",	"The name of the file to export the image to" },
+		{ GIMP_PDB_INT32,   "export-type",	"0 - Tileset, 1 - Bitmap" },
+		{ GIMP_PDB_INT32,   "tile-bpp",		"Bits per pixel" },
+		{ GIMP_PDB_INT32,   "tile-width",	"Tile width" },
+		{ GIMP_PDB_INT32,   "tile-height",	"Tile height" },
+		{ GIMP_PDB_INT32,   "Tiled-file",	"Create a Tiled tile set file" },
+		{ GIMP_PDB_INT32,   "BMP-file",		"Create a BMP output file" },
+		{ GIMP_PDB_INT32,   "PAL-file",		"Create a PAL palette file" }
 	};
 
 	gimp_install_procedure (SAVE_PROC,
