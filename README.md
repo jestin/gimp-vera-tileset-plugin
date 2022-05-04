@@ -114,3 +114,7 @@ command.  This makes it such that you only need to save your GIMP project, and
 don't.
 
 ![gimp compile](gimp_compile.gif)
+
+## Video Demonstration
+
+[![Tools Demo](https://img.youtube.com/vi/ATiwyTGiSc4/0.jpg)](https://www.youtube.com/watch?v=ATiwyTGiSc4)
