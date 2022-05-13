@@ -115,6 +115,51 @@ don't.
 
 ![gimp compile](gimp_compile.gif)
 
+You can also create other useful GIMP scripts that use the `file-vera-save`
+procedure that the plugin defines.  For example, you may want to design an
+image at a larger resolution (perhaps for some box art, promotional materials,
+etc.) but still have it converted to a bitmap for use by the VERA.  In this
+case, you could write a script that crops, scales, converts to indexed mode,
+and finally exports the output using the `file-vera-save` procedure:
+
+```
+(define (make-vera-bitmap filename
+					 outfile
+					 orig-width
+					 orig-height
+					 bpp
+					 bmp-file
+					 pal-file)
+  (let* (
+		 (image (car (gimp-file-load RUN-NONINTERACTIVE filename filename)))
+		 (drawable (car (gimp-image-get-active-layer image)))
+		 (cropped-width (/ (* 320 orig-height) 240))
+		 (x-off (/ (- orig-width cropped-width) 2))
+		 )
+	(gimp-image-crop image cropped-width orig-height x-off 0)
+	(gimp-image-scale image 320 240)
+	(gimp-image-convert-indexed image CONVERT-DITHER-FIXED CONVERT-PALETTE-GENERATE (expt 2 bpp) 0 0 "")
+	(file-vera-save RUN-NONINTERACTIVE
+					image drawable outfile outfile 1 bpp 8 8 0 bmp-file pal-file)
+	(gimp-image-delete image)
+	)
+  )
+```
+
+With this script defined and placed in the scripts directory, you can now
+create a make target that generates a VERA bitmap binary from a much higher
+resolution GIMP project:
+
+```
+MYBITMAP.BIN: MyBitmap.xcf
+	gimp -i -d -f -b '(make-vera-bitmap "MyBitmap.xcf" "MYBITMAP.BIN" 1920 1080 4 1 1)' -b '(gimp-quit 0)'
+```
+
+Now you can create your artwork in a more professional quality and have it
+automatically converted to a format that can be used by your application.
+
+![make bitmap from script](make_bitmap_script.gif)
+
 ## Video Demonstration
 
 [![Tools Demo](https://img.youtube.com/vi/ATiwyTGiSc4/0.jpg)](https://www.youtube.com/watch?v=ATiwyTGiSc4)
