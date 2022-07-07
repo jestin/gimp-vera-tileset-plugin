@@ -41,6 +41,11 @@ static gboolean save_palette(const gchar *filename,
 		const gint        palsize,
 		GError      **error);
 
+static void shift_color_map(guchar* orig,
+		guchar** shifted,
+		gint palsize,
+		gint offset);
+
 typedef enum
 {
 	TILESET = 0,
@@ -302,6 +307,23 @@ static void run (const gchar      *name,
 
 		if (status == GIMP_PDB_SUCCESS)
 		{
+			gint palsize;
+			guchar *cmap = gimp_image_get_colormap (image_id, &palsize);
+
+			if (cmap && veravals.pal_file)
+			{
+				if(!save_palette(filename, cmap, palsize, &error))
+				{
+					status = GIMP_PDB_EXECUTION_ERROR;
+				}
+			}
+
+			// test to modify the colormap
+			// guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
+
+			// shift_color_map(cmap, &shifted_map, palsize, 16);
+			// gimp_image_set_colormap(image_id, shifted_map, palsize);
+
 			gchar *bmp_filename = g_strconcat (filename, ".bmp", NULL);
 			if (veravals.bmp_file)
 			{
@@ -359,6 +381,24 @@ static void run (const gchar      *name,
 	}
 
 	values[0].data.d_status = status;
+}
+
+static void shift_color_map(guchar* orig,
+		guchar** shifted,
+		gint palsize,
+		gint offset)
+{
+	for(int i = 0; i < palsize; i++)
+	{
+		if(i + offset >= palsize)
+		{
+			// this is the last <offset> values in the color map
+			(*shifted)[i] = orig[(i - offset) % palsize];
+			continue;
+		}
+
+		(*shifted)[i] = orig[i+offset];
+	}
 }
 
 static gboolean save_tsx (const gchar  *filename,
@@ -620,15 +660,6 @@ static gboolean save_tile_set (const gchar  *filename,
 	fclose (fp);
 	g_free(tile_buf);
 
-
-	if (cmap && veravals.pal_file)
-	{
-		if(!save_palette(filename, cmap, palsize, error))
-		{
-			return FALSE;
-		}
-	}
-
 	return ret;
 }
 
@@ -791,15 +822,6 @@ static gboolean save_bitmap (const gchar  *filename,
 
 	fclose (fp);
 	g_free(bitmap_buf);
-
-
-	if (cmap && veravals.pal_file)
-	{
-		if(!save_palette(filename, cmap, palsize, error))
-		{
-			return FALSE;
-		}
-	}
 
 	return ret;
 }
