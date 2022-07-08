@@ -319,13 +319,9 @@ static void run (const gchar      *name,
 			}
 
 			// test to modify the colormap
-			// guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
-
-			// shift_color_map(cmap, &shifted_map, palsize, 16);
-			// gimp_image_set_colormap(image_id, shifted_map, palsize);
 
 			gchar *bmp_filename = g_strconcat (filename, ".bmp", NULL);
-			if (veravals.bmp_file)
+			if (veravals.bmp_file && veravals.tile_bpp != TILE_4BPP)
 			{
 				// write out a bitmap to be used with the .tsx file
 				gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
@@ -333,6 +329,35 @@ static void run (const gchar      *name,
 
 			if(veravals.tiled_file)
 			{
+				if(veravals.tile_bpp == TILE_4BPP)
+				{
+					guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
+					gchar * numbered_filename;
+
+					for (int i = 0; i < 16; i++)
+					{
+
+						shift_color_map(cmap, &shifted_map, palsize, i*16);
+						gimp_image_set_colormap(image_id, shifted_map, palsize);
+						sprintf(numbered_filename, "%s.%d", filename, i);
+						bmp_filename = g_strconcat (numbered_filename, ".bmp", NULL);
+
+						if (veravals.bmp_file)
+						{
+							// write out a bitmap to be used with the .tsx file
+							gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
+						}
+
+						if(!save_tsx(numbered_filename, bmp_filename,  GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
+						{
+							status = GIMP_PDB_EXECUTION_ERROR;
+						}
+					}
+
+					gimp_image_set_colormap(image_id, cmap, palsize);
+					free(shifted_map);
+				}
+
 				if(!save_tsx(filename, bmp_filename,  GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
 				{
 					status = GIMP_PDB_EXECUTION_ERROR;
@@ -388,16 +413,21 @@ static void shift_color_map(guchar* orig,
 		gint palsize,
 		gint offset)
 {
-	for(int i = 0; i < palsize; i++)
+	gint offset_base = offset * 3;
+	for(int i = 0; i < palsize*3; i+=3)
 	{
-		if(i + offset >= palsize)
+		if(i + offset_base >= palsize * 3)
 		{
 			// this is the last <offset> values in the color map
-			(*shifted)[i] = orig[(i - offset) % palsize];
+			(*shifted)[i] = orig[(i - offset_base) % palsize];
+			(*shifted)[i+1] = orig[(i+1 - offset_base) % palsize];
+			(*shifted)[i+2] = orig[(i+2 - offset_base) % palsize];
 			continue;
 		}
 
-		(*shifted)[i] = orig[i+offset];
+		(*shifted)[i] = orig[i+offset_base];
+		(*shifted)[i+1] = orig[i+1+offset_base];
+		(*shifted)[i+2] = orig[i+2+offset_base];
 	}
 }
 
