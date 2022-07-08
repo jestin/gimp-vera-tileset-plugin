@@ -329,15 +329,16 @@ static void run (const gchar      *name,
 					if(veravals.tile_bpp == TILE_4BPP)
 					{
 						guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
-						gchar * numbered_filename;
 
 						for (int i = 0; i < 16; i++)
 						{
 
-							shift_color_map(cmap, &shifted_map, palsize, i*16);
+							// shift_color_map(cmap, &shifted_map, palsize, i*16);
 							gimp_image_set_colormap(image_id, shifted_map, palsize);
-							sprintf(numbered_filename, "%s.%d", filename, i);
-							bmp_filename = g_strconcat (numbered_filename, ".bmp", NULL);
+							gchar* number_string = malloc(sizeof(gchar) * 3);
+							sprintf(number_string, "%d", i);
+							gchar *numbered_filename = g_strconcat(filename, ".", number_string, NULL);
+							gchar *numbered_bmp_filename = g_strconcat (numbered_filename, ".bmp", NULL);
 
 							if (veravals.bmp_file)
 							{
@@ -345,14 +346,14 @@ static void run (const gchar      *name,
 								gimp_file_save(GIMP_RUN_NONINTERACTIVE,
 										image_id,
 										drawable_id,
-										bmp_filename,
-										bmp_filename);
+										numbered_bmp_filename,
+										numbered_bmp_filename);
 							}
 
 							if(veravals.tiled_file)
 							{
 								if(!save_tsx(numbered_filename,
-											bmp_filename,
+											numbered_bmp_filename,
 											GIMP_RUN_NONINTERACTIVE,
 											image_id,
 											drawable_id,
@@ -361,10 +362,14 @@ static void run (const gchar      *name,
 									status = GIMP_PDB_EXECUTION_ERROR;
 								}
 							}
+
+							g_free(number_string);
+							g_free(numbered_filename);
+							g_free(numbered_bmp_filename);
 						}
 
 						gimp_image_set_colormap(image_id, cmap, palsize);
-						free(shifted_map);
+						g_free(shifted_map);
 					}
 					else // NOT 4bpp
 					{
@@ -403,6 +408,7 @@ static void run (const gchar      *name,
 					break;
 			}
 
+			g_free(bmp_filename);
 		}
 
 		if (export == GIMP_EXPORT_EXPORT)
@@ -922,6 +928,7 @@ static gboolean save_palette(const gchar *filename,
 		ret = FALSE;
 	fclose (fp);
 	g_free(pal_buf);
+	g_free(newfile);
 
 	return TRUE;
 }
