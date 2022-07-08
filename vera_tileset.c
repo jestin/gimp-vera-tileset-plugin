@@ -318,55 +318,70 @@ static void run (const gchar      *name,
 				}
 			}
 
-			// test to modify the colormap
-
 			gchar *bmp_filename = g_strconcat (filename, ".bmp", NULL);
-			if (veravals.bmp_file && veravals.tile_bpp != TILE_4BPP)
-			{
-				// write out a bitmap to be used with the .tsx file
-				gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
-			}
 
-			if(veravals.tiled_file)
-			{
-				if(veravals.tile_bpp == TILE_4BPP)
-				{
-					guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
-					gchar * numbered_filename;
 
-					for (int i = 0; i < 16; i++)
+			switch(veravals.export_type)
+			{
+				case TILESET:
+
+					// special case for 4bpp
+					if(veravals.tile_bpp == TILE_4BPP)
 					{
+						guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
+						gchar * numbered_filename;
 
-						shift_color_map(cmap, &shifted_map, palsize, i*16);
-						gimp_image_set_colormap(image_id, shifted_map, palsize);
-						sprintf(numbered_filename, "%s.%d", filename, i);
-						bmp_filename = g_strconcat (numbered_filename, ".bmp", NULL);
+						for (int i = 0; i < 16; i++)
+						{
 
+							shift_color_map(cmap, &shifted_map, palsize, i*16);
+							gimp_image_set_colormap(image_id, shifted_map, palsize);
+							sprintf(numbered_filename, "%s.%d", filename, i);
+							bmp_filename = g_strconcat (numbered_filename, ".bmp", NULL);
+
+							if (veravals.bmp_file)
+							{
+								// write out a bitmap to be used with the .tsx file
+								gimp_file_save(GIMP_RUN_NONINTERACTIVE,
+										image_id,
+										drawable_id,
+										bmp_filename,
+										bmp_filename);
+							}
+
+							if(veravals.tiled_file)
+							{
+								if(!save_tsx(numbered_filename,
+											bmp_filename,
+											GIMP_RUN_NONINTERACTIVE,
+											image_id,
+											drawable_id,
+											&error))
+								{
+									status = GIMP_PDB_EXECUTION_ERROR;
+								}
+							}
+						}
+
+						gimp_image_set_colormap(image_id, cmap, palsize);
+						free(shifted_map);
+					}
+					else // NOT 4bpp
+					{
 						if (veravals.bmp_file)
 						{
 							// write out a bitmap to be used with the .tsx file
 							gimp_file_save(run_mode, image_id, drawable_id, bmp_filename, bmp_filename);
 						}
-
-						if(!save_tsx(numbered_filename, bmp_filename,  GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
+						if(veravals.tiled_file)
 						{
-							status = GIMP_PDB_EXECUTION_ERROR;
+							if(!save_tsx(filename, bmp_filename,  GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
+							{
+								status = GIMP_PDB_EXECUTION_ERROR;
+							}
 						}
 					}
 
-					gimp_image_set_colormap(image_id, cmap, palsize);
-					free(shifted_map);
-				}
-
-				if(!save_tsx(filename, bmp_filename,  GIMP_RUN_NONINTERACTIVE, image_id, drawable_id, &error))
-				{
-					status = GIMP_PDB_EXECUTION_ERROR;
-				}
-			}
-
-			switch(veravals.export_type)
-			{
-				case TILESET:
 					if (save_tile_set (filename, image_id, drawable_id, &error))
 					{
 						gimp_set_data (SAVE_PROC, &veravals, sizeof (veravals));
