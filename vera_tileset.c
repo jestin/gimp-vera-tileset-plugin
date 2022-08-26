@@ -333,7 +333,7 @@ static void run (const gchar      *name,
 						for (int i = 0; i < 16; i++)
 						{
 
-							// shift_color_map(cmap, &shifted_map, palsize, i*16);
+							shift_color_map(cmap, &shifted_map, palsize, i*16);
 							gimp_image_set_colormap(image_id, shifted_map, palsize);
 							gchar* number_string = malloc(sizeof(gchar) * 3);
 							sprintf(number_string, "%d", i);
