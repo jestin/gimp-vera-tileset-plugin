@@ -325,8 +325,8 @@ static void run (const gchar      *name,
 			{
 				case TILESET:
 
-					// special case for 4bpp
-					if(veravals.tile_bpp == TILE_4BPP)
+					// generate images for all palettes when using 2bpp or 4bpp
+					if(veravals.tile_bpp == TILE_4BPP || veravals.tile_bpp == TILE_2BPP)
 					{
 						guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
 
