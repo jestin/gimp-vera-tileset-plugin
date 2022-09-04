@@ -12,6 +12,11 @@
 #define PLUG_IN_BINARY   "file-vera"
 #define VERA_DEFAULTS_PARASITE  "vera-save-defaults"
 
+#define PLUG_IN_PROC_SHIFT	"plug-in-colormap-shift"
+#define PLUG_IN_SHIFT_ROLE	"gimp-colormap-shift"
+
+#define RESPONSE_RESET 1
+
 static void query(void);
 static void run(const gchar      *name,
 		gint              nparams,
@@ -137,6 +142,7 @@ static VeraSaveVals veravals;
 static gboolean save_tiles_dialog(gint32 image_id);
 static gboolean save_bitmap_dialog(gint32 image_id);
 static gboolean save_selector_dialog(gint32 image_id);
+static gboolean shift_color_dialog(gint32 image_id);
 static void save_dialog_response(GtkWidget *widget,
 		gint response_id,
 		gpointer data);
@@ -180,6 +186,33 @@ static void query (void)
 
 	gimp_register_file_handler_mime (SAVE_PROC, "application/octet-stream");
 	gimp_register_save_handler (SAVE_PROC, "BIN", "");
+
+	static const GimpParamDef shift_args[] =
+	{
+		{ GIMP_PDB_INT32,     "run-mode",   "The run mode { RUN-NONINTERACTIVE (1) }"  },
+		{ GIMP_PDB_IMAGE,     "image",      "Input image"                          },
+		{ GIMP_PDB_DRAWABLE,  "drawable",   "Input drawable"                       },
+		{ GIMP_PDB_INT8,      "offset",     "The number of collors to shift"          }
+	};
+
+	gimp_install_procedure (PLUG_IN_PROC_SHIFT,
+			"Shift the colors in the color map",
+			"This procedure takes an indexed image and lets you "
+			"shift the colors a given offset into the colormap."
+			"This allows you to edit the same image using different palettes.",
+			"Jestin Stoffel <jestin.stoffel@gmail.com>",
+			"Copyright 2022 by Jestin Stoffel",
+			"0.0.1 2022",
+			"Shift Colors",
+			"INDEXED*",
+			GIMP_PLUGIN,
+			G_N_ELEMENTS (shift_args), 0,
+			shift_args, NULL);
+
+  gimp_plugin_menu_register (PLUG_IN_PROC_SHIFT, "<Image>/Colors/Map/Colormap");
+  gimp_plugin_menu_register (PLUG_IN_PROC_SHIFT, "<Colormap>");
+  gimp_plugin_icon_register (PLUG_IN_PROC_SHIFT, GIMP_ICON_TYPE_ICON_NAME,
+                             (const guint8 *) GIMP_ICON_COLORMAP);
 }
 
 static void run (const gchar      *name,
@@ -206,11 +239,12 @@ static void run (const gchar      *name,
 	values[0].type          = GIMP_PDB_STATUS;
 	values[0].data.d_status = GIMP_PDB_EXECUTION_ERROR;
 
+	run_mode    = param[0].data.d_int32;
+	image_id    = param[1].data.d_int32;
+	drawable_id = param[2].data.d_int32;
+
 	if (strcmp (name, SAVE_PROC) == 0)
 	{
-		run_mode    = param[0].data.d_int32;
-		image_id    = param[1].data.d_int32;
-		drawable_id = param[2].data.d_int32;
 		filename = param[3].data.d_string;
 
 		load_defaults ();
@@ -414,6 +448,21 @@ static void run (const gchar      *name,
 		if (export == GIMP_EXPORT_EXPORT)
 			gimp_image_delete (image_id);
 	}
+	else if (strcmp (name, PLUG_IN_PROC_SHIFT) == 0)
+	{
+		gint palsize;
+		guchar *cmap = gimp_image_get_colormap (image_id, &palsize);
+		guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
+		shift_color_map(cmap, &shifted_map, palsize, 16);
+		gimp_image_set_colormap(image_id, shifted_map, palsize);
+
+		if (run_mode != GIMP_RUN_NONINTERACTIVE)
+		{
+			gimp_displays_flush ();
+		}
+
+		g_free(shifted_map);
+	}
 	else
 	{
 		status = GIMP_PDB_CALLING_ERROR;
@@ -440,9 +489,9 @@ static void shift_color_map(guchar* orig,
 		if(i + offset_base >= palsize * 3)
 		{
 			// this is the last <offset> values in the color map
-			(*shifted)[i] = orig[(i - offset_base) % palsize];
-			(*shifted)[i+1] = orig[(i+1 - offset_base) % palsize];
-			(*shifted)[i+2] = orig[(i+2 - offset_base) % palsize];
+			(*shifted)[i] = orig[(i + offset_base) % palsize];
+			(*shifted)[i+1] = orig[(i+1 + offset_base) % palsize];
+			(*shifted)[i+2] = orig[(i+2 + offset_base) % palsize];
 			continue;
 		}
 
@@ -1245,6 +1294,60 @@ static gboolean save_selector_dialog (gint32 image_id)
 	gtk_main ();
 
 	return vg.run;
+}
+
+static gboolean shift_color_dialog (gint32 image_id)
+{
+	GtkWidget  *dialog;
+	GtkBuilder *builder;
+	gchar      *ui_file;
+	GError     *error = NULL;
+	gboolean      shift_run = FALSE;
+
+	gimp_ui_init (PLUG_IN_PROC_SHIFT, TRUE);
+
+	/* Dialog init */
+  dialog = gimp_dialog_new ("Shift Colormap", PLUG_IN_SHIFT_ROLE,
+                            NULL, 0,
+                            gimp_standard_help_func, PLUG_IN_PROC_SHIFT,
+
+                            "_Reset",  RESPONSE_RESET,
+                            "_Cancel", GTK_RESPONSE_CANCEL,
+                            "_OK",     GTK_RESPONSE_OK,
+
+                            NULL);
+	g_signal_connect (dialog, "destroy",
+			G_CALLBACK (gtk_main_quit),
+			NULL);
+
+	/* GtkBuilder init */
+	builder = gtk_builder_new ();
+	ui_file = g_build_filename (gimp_data_directory (),
+			"ui/plug-ins/plug-in-file-vera-selector.ui",
+			NULL);
+	if (! gtk_builder_add_from_file (builder, ui_file, &error))
+	{
+		gchar *display_name = g_filename_display_name (ui_file);
+		g_printerr ("Error loading UI file '%s': %s",
+				display_name, error ? error->message : "Unknown error");
+		g_free (display_name);
+	}
+
+	g_free (ui_file);
+
+	/* VBox */
+	gtk_box_pack_start (GTK_BOX (gtk_dialog_get_content_area (GTK_DIALOG(dialog))),
+			GTK_WIDGET (gtk_builder_get_object (builder, "vbox")),
+			FALSE, FALSE, 0);
+
+
+
+	/* Show dialog and run */
+	gtk_widget_show (dialog);
+
+	gtk_main ();
+
+	return shift_run;
 }
 
 static void save_dialog_response (GtkWidget *widget,
