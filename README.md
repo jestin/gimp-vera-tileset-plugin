@@ -160,6 +160,12 @@ automatically converted to a format that can be used by your application.
 
 ![make bitmap from script](make_bitmap_script.gif)
 
-## Video Demonstration
+## Video Demonstrations
+
+Tools Overview:
 
 [![Tools Demo](https://img.youtube.com/vi/ATiwyTGiSc4/0.jpg)](https://www.youtube.com/watch?v=ATiwyTGiSc4)
+
+Collision Detection:
+
+[![Collision Detection](https://img.youtube.com/vi/HCEfZ3UPACM/0.jpg)](https://www.youtube.com/watch?v=HCEfZ3UPACM)
