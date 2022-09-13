@@ -12,6 +12,8 @@
 #define PLUG_IN_BINARY   "file-vera"
 #define VERA_DEFAULTS_PARASITE  "vera-save-defaults"
 
+#define VERA_COLORMAP_CONVERT	"plug-in-vera-colormap-convert"
+
 static void query(void);
 static void run(const gchar      *name,
 		gint              nparams,
@@ -180,6 +182,32 @@ static void query (void)
 
 	gimp_register_file_handler_mime (SAVE_PROC, "application/octet-stream");
 	gimp_register_save_handler (SAVE_PROC, "BIN", "");
+
+	static const GimpParamDef vera_convert_args[] =
+	{
+		{ GIMP_PDB_INT32,    "run-mode",	"The run mode { RUN-INTERACTIVE (0), RUN-NONINTERACTIVE (1) }" },
+		{ GIMP_PDB_IMAGE,    "image",		"Input image" },
+		{ GIMP_PDB_DRAWABLE, "drawable",	"Drawable to export" }
+	};
+
+	gimp_install_procedure (VERA_COLORMAP_CONVERT,
+			"Aligns the colormap to nearest colors that can be displayed on the VERA chip",
+			"This procedure takes an indexed image and converts every color "
+			"in the colormap for proper viewing when converted to 12 bit color depth."
+			"This allows for more accurate viewing when exported for use on the VERA chip.",
+			"Jestin Stoffel <jestin.stoffel@gmail.com>",
+			"Copyright 2022 by Jestin Stoffel",
+			"0.0.1 2022",
+			"Convert to VERA compatible colors",
+			"INDEXED*",
+			GIMP_PLUGIN,
+			G_N_ELEMENTS (vera_convert_args), 0,
+			vera_convert_args, NULL);
+
+	gimp_plugin_menu_register (VERA_COLORMAP_CONVERT, "<Image>/Colors/Map/Colormap");
+	gimp_plugin_menu_register (VERA_COLORMAP_CONVERT, "<Colormap>");
+	gimp_plugin_icon_register (VERA_COLORMAP_CONVERT, GIMP_ICON_TYPE_ICON_NAME,
+			(const guint8 *) GIMP_ICON_COLORMAP);
 }
 
 static void run (const gchar      *name,
@@ -206,11 +234,12 @@ static void run (const gchar      *name,
 	values[0].type          = GIMP_PDB_STATUS;
 	values[0].data.d_status = GIMP_PDB_EXECUTION_ERROR;
 
+	run_mode    = param[0].data.d_int32;
+	image_id    = param[1].data.d_int32;
+	drawable_id = param[2].data.d_int32;
+
 	if (strcmp (name, SAVE_PROC) == 0)
 	{
-		run_mode    = param[0].data.d_int32;
-		image_id    = param[1].data.d_int32;
-		drawable_id = param[2].data.d_int32;
 		filename = param[3].data.d_string;
 
 		load_defaults ();
@@ -413,6 +442,52 @@ static void run (const gchar      *name,
 
 		if (export == GIMP_EXPORT_EXPORT)
 			gimp_image_delete (image_id);
+	}
+	else if (strcmp (name, VERA_COLORMAP_CONVERT) == 0)
+	{
+		/*  Make sure that the image is indexed  */
+		if (gimp_image_base_type (image_id) != GIMP_INDEXED)
+			status = GIMP_PDB_EXECUTION_ERROR;
+
+		if (status == GIMP_PDB_SUCCESS)
+		{
+			gint palsize;
+			guchar * cmap;
+			guchar* adjusted_map;
+
+			switch (run_mode)
+			{
+				case GIMP_RUN_INTERACTIVE:
+				case GIMP_RUN_NONINTERACTIVE:
+					if (nparams != 2)
+					{
+						status = GIMP_PDB_CALLING_ERROR;
+					}
+
+					cmap = gimp_image_get_colormap (image_id, &palsize);
+					adjusted_map = (guchar*)malloc(sizeof(guchar) * palsize * 3);
+
+					for (int i = 0; i < palsize * 3; i++)
+					{
+						adjusted_map[i] = ((cmap[i] & 0xf0) >> 4) | (cmap[i] & 0xf0);
+					}
+
+					break;
+			}
+
+			if (status == GIMP_PDB_SUCCESS)
+			{
+				gimp_image_set_colormap(image_id, adjusted_map, palsize);
+
+				if (run_mode == GIMP_RUN_INTERACTIVE)
+					gimp_set_data (VERA_COLORMAP_CONVERT, cmap, sizeof (cmap));
+
+				if (run_mode != GIMP_RUN_NONINTERACTIVE)
+					gimp_displays_flush ();
+			}
+
+			g_free(adjusted_map);
+		}
 	}
 	else
 	{
