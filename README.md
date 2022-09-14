@@ -191,9 +191,9 @@ After running "Convert to VERA compatible colors", the image in GIMP now looks l
 ![after correction](color_correction.png)
 
 While still not perfect (especially when taking into account different monitors
-and different emulator implementations) the image can not be edited with colors
+and different emulator implementations) the image can now be edited with colors
 closer to how they will eventually be rendered.  Meanwhile, the exported
-palette is still bit-for-bit identical to what is export prior to running the
+palette is still bit-for-bit identical to what was export prior to running the
 tool.
 
 ## Video Demonstrations
