@@ -160,6 +160,42 @@ automatically converted to a format that can be used by your application.
 
 ![make bitmap from script](make_bitmap_script.gif)
 
+## VERA Colormap Conversion
+
+In addition to the tile and bitmap exports, this plugin includes a tool for
+viewing artwork with the colors that will be displayed on the VERA.  While the
+GIMP's colormap uses 8 bits per channel to define a color, the VERA's palette
+uses 4 bits per channel.  This inevitably leads to some slight color
+differences from what is displayed in the GIMP.  While these differences are
+very minor, this problem can be mitigated.
+
+This plugin adds a "Convert to VERA compatible colors" feature under Colors ->
+Map.  This will modify the colors in your image's colormap to more accurately
+display how those existing colors will render on the VERA.  Due to the
+downgrading of the color space that already takes place during a VERA export,
+running this tool will have no effect on the export of the image.  It's simply
+changing the least significant bits that are discarded on export.  However, the
+colors in the GIMP will now be closer to how they will appear on the VERA
+hardware.
+
+For example, here is a 16-color image shown in GIMP:
+
+![before color correction](before_export.png)
+
+And here is how that image renders on the VERA:
+
+![on VERA](on_VERA.png)
+
+After running "Convert to VERA compatible colors", the image in GIMP now looks like:
+
+![after correction](color_correction.png)
+
+While still not perfect (especially when taking into account different monitors
+and different emulator implementations) the image can not be edited with colors
+closer to how they will eventually be rendered.  Meanwhile, the exported
+palette is still bit-for-bit identical to what is export prior to running the
+tool.
+
 ## Video Demonstrations
 
 Tools Overview:
