@@ -357,9 +357,10 @@ static void run (const gchar      *name,
 					// generate images for all palettes when using 2bpp or 4bpp
 					if(veravals.tile_bpp == TILE_4BPP || veravals.tile_bpp == TILE_2BPP)
 					{
-						guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize);
+						guchar* shifted_map = (guchar*)malloc(sizeof(guchar) * palsize * 3);
+						guchar num_palettes = palsize / 16;
 
-						for (int i = 0; i < 16; i++)
+						for (int i = 0; i < num_palettes; i++)
 						{
 
 							shift_color_map(cmap, &shifted_map, palsize, i*16);
@@ -400,7 +401,7 @@ static void run (const gchar      *name,
 						gimp_image_set_colormap(image_id, cmap, palsize);
 						g_free(shifted_map);
 					}
-					else // NOT 4bpp
+					else // NOT 4bpp or 2BPP
 					{
 						if (veravals.bmp_file)
 						{
