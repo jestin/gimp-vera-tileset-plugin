@@ -744,16 +744,15 @@ static gboolean save_tile_set (const gchar  *filename,
 							}
 							break;
 						case TILE_4BPP:
-							if (buf_index % 2)
+							switch(buf_index % 2)
 							{
-								// odd byte
-								tile_buf[tile_buf_index] |= color;
-								tile_buf_index++;
-							}
-							else
-							{
-								// even byte
-								tile_buf[tile_buf_index] = color << 4;
+								case 0:
+									tile_buf[tile_buf_index] = color << 4;
+									break;
+								case 1:
+									tile_buf[tile_buf_index] |= color;
+									tile_buf_index++;
+									break;
 							}
 							break;
 						case TILE_8BPP:
