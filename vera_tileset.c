@@ -277,14 +277,6 @@ static void run (const gchar      *name,
 		switch (run_mode)
 		{
 			case GIMP_RUN_INTERACTIVE:
-				/*
-				 * Possibly retrieve data...
-				 */
-				gimp_get_data (SAVE_PROC, &veravals);
-
-				/*
-				 * Then acquire information with a dialog...
-				 */
 
 				switch(veravals.export_type)
 				{
