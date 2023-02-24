@@ -1,5 +1,6 @@
 # assembled binaries
 vera_tileset
+*.exe
 *.o
 
 # vim stuff
@@ -12,3 +13,6 @@ stats/*
 
 # ctags
 tags
+
+# MSYS2 gimptool-2.0 output
+win.localcomp.sh

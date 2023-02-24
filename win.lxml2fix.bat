@@ -1,0 +1,1 @@
+mklink /D C:\msys64\mingw64\include\libxml C:\msys64\mingw64\include\libxml2\libxml
