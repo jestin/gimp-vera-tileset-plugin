@@ -255,9 +255,10 @@ static void run (const gchar      *name,
 			return;
 		}
 
-		switch(run_mode) 
+		switch (run_mode)
 		{
 			case GIMP_RUN_INTERACTIVE:
+
 				/*
 				 * Possibly retrieve data...
 				 */
@@ -271,12 +272,6 @@ static void run (const gchar      *name,
 					values[0].data.d_status = GIMP_PDB_CANCEL;
 					return;
 				}
-				break;
-		}
-
-		switch (run_mode)
-		{
-			case GIMP_RUN_INTERACTIVE:
 
 				switch(veravals.export_type)
 				{
@@ -452,6 +447,7 @@ static void run (const gchar      *name,
 			{
 				case GIMP_RUN_INTERACTIVE:
 				case GIMP_RUN_NONINTERACTIVE:
+				case GIMP_RUN_WITH_LAST_VALS:
 					if (nparams != 2)
 					{
 						status = GIMP_PDB_CALLING_ERROR;
@@ -532,7 +528,6 @@ static gboolean save_tsx (const gchar  *filename,
 
 	int rc;
 	xmlTextWriterPtr writer;
-	xmlChar* tmp;
 
 	writer = xmlNewTextWriterFilename(tsx_filename, 0);
 	if(writer == NULL)
@@ -603,6 +598,8 @@ static gboolean save_tsx (const gchar  *filename,
 	xmlFreeTextWriter(writer);
 
 	printf("finished writing tsx document\n");
+
+	return TRUE;
 }
 
 static gboolean save_tile_set (const gchar  *filename,
@@ -612,15 +609,10 @@ static gboolean save_tile_set (const gchar  *filename,
 {
 	GeglBuffer       *buffer;
 	const Babl       *format = NULL;
-	guchar           *cmap   = NULL;  /* colormap for indexed images */
 	guchar           *buf;
 	guchar           *tile_buf;
-	guchar           *components[4] = { 0, };
-	gint              n_components;
 	gint32            width, height, bpp;
 	FILE             *fp = NULL;
-	gint              i, j, c;
-	gint              palsize = 0;
 	gboolean          ret = FALSE;
 
 	/* get info about the current image */
@@ -632,15 +624,16 @@ static gboolean save_tile_set (const gchar  *filename,
 		case GIMP_INDEXEDA_IMAGE:
 			format = gimp_drawable_get_format (drawable_id);
 			break;
+		case GIMP_RGB_IMAGE:
+		case GIMP_RGBA_IMAGE:
+		case GIMP_GRAY_IMAGE:
+		case GIMP_GRAYA_IMAGE:
+		default:
+			// TODO set error message
+			return FALSE;
 	}
 
-	n_components = babl_format_get_n_components (format);
 	bpp          = babl_format_get_bytes_per_pixel (format);
-
-	if (gimp_drawable_is_indexed (drawable_id))
-	{
-		cmap = gimp_image_get_colormap (image_id, &palsize);
-	}
 
 	width  = gegl_buffer_get_width  (buffer);
 	height = gegl_buffer_get_height (buffer);
@@ -788,15 +781,10 @@ static gboolean save_bitmap (const gchar  *filename,
 {
 	GeglBuffer       *buffer;
 	const Babl       *format = NULL;
-	guchar           *cmap   = NULL;  /* colormap for indexed images */
 	guchar           *buf;
 	guchar           *bitmap_buf;
-	guchar           *components[4] = { 0, };
-	gint              n_components;
 	gint32            width, height, bpp;
 	FILE             *fp = NULL;
-	gint              i, j, c;
-	gint              palsize = 0;
 	gboolean          ret = FALSE;
 
 	/* get info about the current image */
@@ -808,15 +796,16 @@ static gboolean save_bitmap (const gchar  *filename,
 		case GIMP_INDEXEDA_IMAGE:
 			format = gimp_drawable_get_format (drawable_id);
 			break;
+		case GIMP_RGB_IMAGE:
+		case GIMP_RGBA_IMAGE:
+		case GIMP_GRAY_IMAGE:
+		case GIMP_GRAYA_IMAGE:
+		default:
+			// TODO set error message
+			return FALSE;
 	}
 
-	n_components = babl_format_get_n_components (format);
 	bpp          = babl_format_get_bytes_per_pixel (format);
-
-	if (gimp_drawable_is_indexed (drawable_id))
-	{
-		cmap = gimp_image_get_colormap (image_id, &palsize);
-	}
 
 	width  = gegl_buffer_get_width  (buffer);
 	height = gegl_buffer_get_height (buffer);
@@ -950,7 +939,6 @@ static gboolean save_palette(const gchar *filename,
 		GError            **error)
 {
 	FILE       *fp = NULL;
-	gboolean   ret = FALSE;
 	guchar     *pal_buf;
 	pal_buf = g_new (guchar, (palsize * 2) + 2); // 2 bytes per color, 2 byte header
 
@@ -978,7 +966,6 @@ static gboolean save_palette(const gchar *filename,
 
 	/* we have colormap too, write it into filename+PAL.BIN */
 	gchar *newfile = g_strconcat (filename, ".PAL", NULL);
-	gchar *temp;
 
 	fp = fopen (newfile, "wb");
 
@@ -992,7 +979,8 @@ static gboolean save_palette(const gchar *filename,
 	}
 
 	if (!fwrite (pal_buf, (palsize * 2) + 2, 1, fp))
-		ret = FALSE;
+		return FALSE;
+
 	fclose (fp);
 	g_free(pal_buf);
 	g_free(newfile);
