@@ -76,7 +76,11 @@ export a tile set or a bitmap.
 If you choose to export a tile set, you will be promoted for some details about
 the tiles, and also about additional exports such as VERA-compatible palette
 file, Tiled tileset file, and a BMP file to be used with Tiled tilesets.
-Choose the correct settings for your needs.
+Choose the correct settings for your needs.  You also choose whether or not you
+want a 2-byte header added to the file, which is often a convention on
+Commodore and Commodore-like computers.  If selected, this header will be added
+to all VERA-compatible file outputs, including bitmaps, tile sets, and palette
+files.
 
 ![tile settings](Tile_Settings.png)
 
@@ -101,6 +105,7 @@ directory.  This script should work for most use cases:
 (define (export-vera filename
 					 outfile
 					 export-type
+					 file-header
 					 tile-bpp
 					 tile-width
 					 tile-height
@@ -110,7 +115,7 @@ directory.  This script should work for most use cases:
   (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE filename filename)))
 		(drawable (car (gimp-image-get-active-layer image))))
   (file-vera-save RUN-NONINTERACTIVE
-				  image drawable outfile outfile export-type tile-bpp tile-width tile-height tiled-file bmp-file pal-file)
+				  image drawable outfile outfile export-type file-header tile-bpp tile-width tile-height tiled-file bmp-file pal-file)
   (gimp-image-delete image)))
 ```
 
@@ -124,7 +129,7 @@ from a `Makefile` or build script:
 
 ```
 MYTILES.BIN: MyTiles.xcf
-	gimp -i -b '(export-vera "MyTiles.xcf" "MYTILES.BIN" 0 8 16 16 0 1 0)' -b '(gimp-quit 0)'
+	gimp -i -b '(export-vera "MyTiles.xcf" "MYTILES.BIN" 0 0 8 16 16 0 1 0)' -b '(gimp-quit 0)'
 ```
 
 This exports the tiles in MyTiles.xcf as a VERA tile set, at 8 bits per pixel,
@@ -147,6 +152,7 @@ and finally exports the output using the `file-vera-save` procedure:
 ```
 (define (make-vera-bitmap filename
 					 outfile
+					 file-header
 					 orig-width
 					 orig-height
 					 bpp
@@ -162,7 +168,7 @@ and finally exports the output using the `file-vera-save` procedure:
 	(gimp-image-scale image 320 240)
 	(gimp-image-convert-indexed image CONVERT-DITHER-FIXED CONVERT-PALETTE-GENERATE (expt 2 bpp) 0 0 "")
 	(file-vera-save RUN-NONINTERACTIVE
-					image drawable outfile outfile 1 bpp 8 8 0 bmp-file pal-file)
+					image drawable outfile outfile 1 file-header bpp 8 8 0 bmp-file pal-file)
 	(gimp-image-delete image)
 	)
   )
@@ -174,7 +180,7 @@ resolution GIMP project:
 
 ```
 MYBITMAP.BIN: MyBitmap.xcf
-	gimp -i -d -f -b '(make-vera-bitmap "MyBitmap.xcf" "MYBITMAP.BIN" 1920 1080 4 1 1)' -b '(gimp-quit 0)'
+	gimp -i -d -f -b '(make-vera-bitmap "MyBitmap.xcf" "MYBITMAP.BIN" 0 1920 1080 4 1 1)' -b '(gimp-quit 0)'
 ```
 
 Now you can create your artwork in a more professional quality and have it

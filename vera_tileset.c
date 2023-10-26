@@ -80,6 +80,7 @@ typedef enum
 
 typedef struct
 {
+	gboolean       file_header;
 	VeraExport     export_type;	 /* tileset or bitmap */
 	TileBpp        tile_bpp;     /* Bits per pixel format for tiles */
 	TileWidth      tile_width;
@@ -112,6 +113,7 @@ typedef struct
 	GtkWidget *pal_file;
 
 	// selector dialog
+	GtkWidget *file_header;
 	GtkWidget *tileset_export;
 	GtkWidget *bitmap_export;
 } VeraSaveGui;
@@ -158,6 +160,7 @@ static void query (void)
 		{ GIMP_PDB_STRING,   "filename",	"The name of the file to export the image to" },
 		{ GIMP_PDB_STRING,   "raw-filename",	"The name of the file to export the image to" },
 		{ GIMP_PDB_INT32,   "export-type",	"0 - Tileset, 1 - Bitmap" },
+		{ GIMP_PDB_INT32,   "file-header",	"0 - no 2-byte header, 1 - 2-byte header" },
 		{ GIMP_PDB_INT32,   "tile-bpp",		"Bits per pixel" },
 		{ GIMP_PDB_INT32,   "tile-width",	"Tile width" },
 		{ GIMP_PDB_INT32,   "tile-height",	"Tile height" },
@@ -291,22 +294,20 @@ static void run (const gchar      *name,
 				/*
 				 * Make sure all the arguments are there!
 				 */
-				if (nparams != 10)
+				if (nparams != 13)
 				{
-					if (nparams != 12)
-					{
-						status = GIMP_PDB_CALLING_ERROR;
-					}
-					else
-					{
-						veravals.export_type = param[5].data.d_int32;
-						veravals.tile_bpp    = param[6].data.d_int32;
-						veravals.tile_width  = param[7].data.d_int32;
-						veravals.tile_height = param[8].data.d_int32;
-						veravals.tiled_file  = param[9].data.d_int32;
-						veravals.bmp_file    = param[10].data.d_int32;
-						veravals.pal_file    = param[11].data.d_int32;
-					}
+					status = GIMP_PDB_CALLING_ERROR;
+				}
+				else
+				{
+					veravals.export_type = param[5].data.d_int32;
+					veravals.file_header = param[6].data.d_int32;
+					veravals.tile_bpp    = param[7].data.d_int32;
+					veravals.tile_width  = param[8].data.d_int32;
+					veravals.tile_height = param[9].data.d_int32;
+					veravals.tiled_file  = param[10].data.d_int32;
+					veravals.bmp_file    = param[11].data.d_int32;
+					veravals.pal_file    = param[12].data.d_int32;
 				}
 				break;
 
@@ -650,15 +651,23 @@ static gboolean save_tile_set (const gchar  *filename,
 	int tile_height = veravals.tile_height;
 	int t_width = width / tile_width;
 	int t_height = height / tile_height;
+	int tile_buf_length = ((width * height * bpp) / (8 / veravals.tile_bpp));
+	int tile_buf_index = 0;
 
-	int tile_buf_length = ((width * height * bpp) / (8 / veravals.tile_bpp)) + 2;
+	if(veravals.file_header)
+	{
+		tile_buf_length += 2;
+		tile_buf_index += 2;
+	}
+
 	tile_buf = g_new (guchar, tile_buf_length);
 
-	int tile_buf_index = 2;
-
-	// 2 byte header
-	tile_buf[0] = 0;
-	tile_buf[1] = 0;
+	if(veravals.file_header)
+	{
+		// 2 byte header
+		tile_buf[0] = 0;
+		tile_buf[1] = 0;
+	}
 
 	for(int y = 0; y < t_height; y++)
 	{
@@ -818,14 +827,23 @@ static gboolean save_bitmap (const gchar  *filename,
 
 	g_object_unref (buffer);
 
-	int bitmap_buf_length = ((width * height * bpp) / (8 / veravals.tile_bpp)) + 2;
+	int bitmap_buf_length = ((width * height * bpp) / (8 / veravals.tile_bpp));
+	int bitmap_buf_index = 0;
+
+	if(veravals.file_header)
+	{
+		bitmap_buf_length += 2;
+		bitmap_buf_index += 2;
+	}
+
 	bitmap_buf = g_new (guchar, bitmap_buf_length);
 
-	int bitmap_buf_index = 2;
-
-	// 2 byte header
-	bitmap_buf[0] = 0;
-	bitmap_buf[1] = 0;
+	if(veravals.file_header)
+	{
+		// 2 byte header
+		bitmap_buf[0] = 0;
+		bitmap_buf[1] = 0;
+	}
 
 	// TODO: populate bitmap_buf
 	// write the whole file
@@ -940,13 +958,24 @@ static gboolean save_palette(const gchar *filename,
 {
 	FILE       *fp = NULL;
 	guchar     *pal_buf;
-	pal_buf = g_new (guchar, (palsize * 2) + 2); // 2 bytes per color, 2 byte header
+	int pal_buf_length = palsize * 2;
+	int pal_buf_index = 0; // start past the 2 byte header
 
-	// 2 byte header
-	pal_buf[0] = 0;
-	pal_buf[1] = 0;
+	if(veravals.file_header)
+	{
+		pal_buf_length += 2;
+		pal_buf_index += 2;
+	}
 
-	int pal_buf_index = 2; // start past the 2 byte header
+	pal_buf = g_new (guchar, pal_buf_length); // 2 bytes per color, 2 byte header
+
+	if(veravals.file_header)
+	{
+		// 2 byte header
+		pal_buf[0] = 0;
+		pal_buf[1] = 0;
+	}
+
 
 	for(int i = 0; i < palsize*3; i+=3)
 	{
@@ -978,7 +1007,7 @@ static gboolean save_palette(const gchar *filename,
 		return FALSE;
 	}
 
-	if (!fwrite (pal_buf, (palsize * 2) + 2, 1, fp))
+	if (!fwrite (pal_buf, pal_buf_length, 1, fp))
 		return FALSE;
 
 	fclose (fp);
@@ -1282,6 +1311,11 @@ static gboolean save_selector_dialog (gint32 image_id)
 			GTK_WIDGET (gtk_builder_get_object (builder, "vbox")),
 			FALSE, FALSE, 0);
 
+	vg.file_header = check_button_init (builder, "file-header",
+			FALSE,
+			veravals.file_header,
+			&veravals.file_header);
+
 	/* Radios */
 	vg.tileset_export = radio_button_init (builder, "vera-tileset",
 			TILESET,
@@ -1350,6 +1384,7 @@ static void load_gui_defaults (VeraSaveGui *vg)
 	// selector dialog
 	SET_ACTIVE (tileset_export, export_type);
 	SET_ACTIVE (bitmap_export, export_type);
+	SET_ACTIVE (file_header, export_type);
 
 #undef SET_ACTIVE
 }
@@ -1373,8 +1408,9 @@ static void load_defaults (void) {
 
 		gimp_parasite_free (parasite);
 
-		num_fields = sscanf (def_str, "%d %d %d %d %d %d %d",
+		num_fields = sscanf (def_str, "%d %d %d %d %d %d %d %d",
 				(int *) &tmpvals.export_type,
+				(int *) &tmpvals.file_header,
 				(int *) &tmpvals.tile_bpp,
 				(int *) &tmpvals.tile_width,
 				(int *) &tmpvals.tile_height,
@@ -1394,8 +1430,9 @@ static void save_defaults (void)
 	GimpParasite *parasite;
 	gchar        *def_str;
 
-	def_str = g_strdup_printf ("%d %d %d %d %d %d %d",
+	def_str = g_strdup_printf ("%d %d %d %d %d %d %d %d",
 			veravals.export_type,
+			veravals.file_header,
 			veravals.tile_bpp,
 			veravals.tile_width,
 			veravals.tile_height,
