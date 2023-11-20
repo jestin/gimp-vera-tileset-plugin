@@ -443,6 +443,7 @@ static void run (const gchar      *name,
 			gint palsize;
 			guchar * cmap;
 			guchar* adjusted_map;
+			gint cur_pal_val;
 
 			switch (run_mode)
 			{
@@ -459,7 +460,10 @@ static void run (const gchar      *name,
 
 					for (int i = 0; i < palsize * 3; i++)
 					{
-						adjusted_map[i] = ((cmap[i] & 0xf0) >> 4) | (cmap[i] & 0xf0);
+						// adjusted_map[i] = ((cmap[i] & 0xf0) >> 4) | (cmap[i] & 0xf0);
+						cur_pal_val = cmap[i];
+						cur_pal_val = ((cur_pal_val * 15) + 135) >> 8;
+						adjusted_map[i] = ((cur_pal_val & 0x0f) << 4) | (cur_pal_val & 0x0f);
 					}
 
 					break;
@@ -980,15 +984,15 @@ static gboolean save_palette(const gchar *filename,
 	for(int i = 0; i < palsize*3; i+=3)
 	{
 		// read rgb values from colormap
-		guchar r = cmap[i];
-		guchar g = cmap[i+1];
-		guchar b = cmap[i+2];
+		gint r = ((cmap[i] * 15) + 135) >> 8;
+		gint g = ((cmap[i+1] * 15) + 135) >> 8;
+		gint b = ((cmap[i+2] * 15) + 135) >> 8;
 
 		// write out packed g and b values
-		pal_buf[pal_buf_index] = (g & 0xf0) | ((b & 0xf0) >> 4);
+		pal_buf[pal_buf_index] = (g & 0x0f) << 4 | b;
 
 		// write out r value in lower nibble
-		pal_buf[pal_buf_index+1] = (r & 0xf0) >> 4;
+		pal_buf[pal_buf_index+1] = r & 0x0f;
 
 		pal_buf_index += 2;
 	}
