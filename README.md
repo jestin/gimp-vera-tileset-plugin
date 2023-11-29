@@ -37,12 +37,11 @@ $ sudo make install-ui
 <!-- section made by Adiee5, ruined by Frosty-J -->
 
 Things become significantly more complicated here, because Windows comes without
-any kind of C compiler and installing a TUI compiler is significantly harder
-than it is on Linux.
+any kind of C compiler.
 
 - Install [MSYS2](https://www.msys2.org/).
-  - If you change its installation location, update line 3 of the below code 
-    block accordingly.
+  - If you change its install path, update line 3 of the below code block
+    accordingly.
 - Install the [Stable branch (GIMP 2.10) dependencies](
   https://developer.gimp.org/core/setup/build/windows/#stable-branch-gimp-210-dependencies).
 - From the Start menu, right-click **MSYS MINGW64 Shell** (or **MSYS MINGW32**
