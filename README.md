@@ -44,11 +44,12 @@ any kind of C compiler.
     accordingly.
 - Install the [Stable branch (GIMP 2.10) dependencies](
   https://developer.gimp.org/core/setup/build/windows/#stable-branch-gimp-210-dependencies).
-- From the Start menu, right-click **MSYS MINGW64 Shell** (or **MSYS MINGW32**
-  for 32-bit Windows) -> **Run as administrator**.
+- From the Start menu, right-click **MSYS MINGW64 Shell** -> **Run as 
+  administrator**.
+  - If on a 32-bit system, you'll have to run **MSYS MINGW32** instead.
 - Enter `pacman -Syyuu` to force package updates (middle-click to paste).
-- Enter `pacman -S mingw-w64-x86_64-gimp` (or `pacman -S mingw-w64-i686-gimp`
-  for 32-bit).
+- `pacman -S mingw-w64-x86_64-gimp`
+  - If on 32-bit, instead: `pacman -S mingw-w64-i686-gimp`
 - Clone this repository, build and install:
 
 ```
@@ -62,7 +63,8 @@ mkdir "/c/Program Files/GIMP 2/lib/gimp/2.0/plug-ins/vera_tileset"
 cp vera_tileset.exe "/c/Program Files/GIMP 2/lib/gimp/2.0/plug-ins/vera_tileset"
 ```
 
-If all's gone well, open GIMP. MSYS2 is no longer needed.
+If all's gone well, open GIMP. MSYS2 is no longer needed and the repository
+folder can be deleted.
 
 ## Usage
 
