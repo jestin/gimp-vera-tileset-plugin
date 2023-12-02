@@ -55,9 +55,11 @@ any kind of C compiler.
 ```
 git clone https://github.com/jestin/gimp-vera-tileset-plugin
 cd gimp-vera-tileset-plugin
+
 ln -s /c/msys64/mingw64/include/libxml2/libxml /c/msys64/mingw64/include/libxml
 gimptool-2.0 -n --build vera_tileset.c | sed '$s/$/-lxml2/' > win.localcomp.sh
 ./win.localcomp.sh
+
 cp plug-in-file-vera-*.ui "/c/Program Files/GIMP 2/share/gimp/2.0/ui/plug-ins"
 mkdir "/c/Program Files/GIMP 2/lib/gimp/2.0/plug-ins/vera_tileset"
 cp vera_tileset.exe "/c/Program Files/GIMP 2/lib/gimp/2.0/plug-ins/vera_tileset"
