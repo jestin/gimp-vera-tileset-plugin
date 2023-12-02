@@ -42,12 +42,12 @@ any kind of C compiler.
 - Install [MSYS2](https://www.msys2.org/).
   - If you change its install path, update line 3 of the below code block
     accordingly.
-- Install the [Stable branch (GIMP 2.10) dependencies](
-  https://developer.gimp.org/core/setup/build/windows/#stable-branch-gimp-210-dependencies).
 - From the Start menu, right-click **MSYS MINGW64 Shell** -> **Run as 
   administrator**.
   - If on a 32-bit system, you'll have to run **MSYS MINGW32** instead.
 - Enter `pacman -Syyuu` to force package updates (middle-click to paste).
+- Install the [Stable branch (GIMP 2.10) dependencies](
+  https://developer.gimp.org/core/setup/build/windows/#stable-branch-gimp-210-dependencies).
 - `pacman -S mingw-w64-x86_64-gimp`
   - If on 32-bit, instead: `pacman -S mingw-w64-i686-gimp`
 - Clone this repository, build and install:
