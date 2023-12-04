@@ -34,24 +34,39 @@ $ sudo make install-ui
 ```
 
 ### Windows
-<!--section made by Adiee5-->
+<!-- section made by Adiee5, ruined by Frosty-J -->
 
+Things become significantly more complicated here, because Windows comes without
+any kind of C compiler.
 
-Things become significantly more complicated here, because Windows comes without any kind of C compiler and installing a tui compiler's significantly harder than it is on linux. Using IDEs wasn't tested yet, but it's probably not possible.
+- Install [MSYS2](https://www.msys2.org/).
+  - If you change its install path, update line 3 of the below code block
+    accordingly.
+- From the Start menu, right-click **MSYS MINGW64 Shell** -> **Run as 
+  administrator**.
+  - If on a 32-bit system, you'll have to run **MSYS MINGW32** instead.
+- Enter `pacman -Syyuu` to force package updates (middle-click to paste).
+- Install the [Stable branch (GIMP 2.10) dependencies](
+  https://developer.gimp.org/core/setup/build/windows/#stable-branch-gimp-210-dependencies).
+- `pacman -S mingw-w64-x86_64-gimp`
+  - If on 32-bit, instead: `pacman -S mingw-w64-i686-gimp`
+- Clone this repository, build and install:
 
-So first, we need to install [MSYS2](https://www.msys2.org/), don't change the location of the install, because the `win.lxml2fix.bat` relies on it heavely; then we'll need to run it in **MinGW64** (or theoretically **MinGW32**, but i highly doubt anyone uses 32bit windows at this point). When in it, you'll need profilactically type in the `pacman -Syyuu`, next type in the `pacman -S mingw-w64-Ж-gimp` with `Ж` needing to be replaced with either `x86_64` or `i686` depending on whenether you want to compile for **64** or **32(i686)** bits, and then install the [Stable GIMP 2.10 dependencies](https://developer.gimp.org/core/setup/build/windows/#stable-branch-gimp-210-dependencies). Next type in the 
 ```
-git clone https://github.com/jestin/gimp-vera-tileset-plugin.git
-cd gimp-vera*
-```
-in order to download the source code. Then type `explorer .` to open downloaded folder in File Manager and run the `win.lxml2fix.bat` (you may want to run this as an **admin**). After all of that you'll have to type into **MSYS2**: 
-```
-gimptool-2.0 -n --build vera_tileset.c > win.localcomp.sh
-echo " -lxml2" >> win.localcomp.sh 
+git clone https://github.com/jestin/gimp-vera-tileset-plugin
+cd gimp-vera-tileset-plugin
+
+ln -s /c/msys64/mingw64/include/libxml2/libxml /c/msys64/mingw64/include/libxml
+gimptool-2.0 -n --build vera_tileset.c | sed '$s/$/-lxml2/' > win.localcomp.sh
 ./win.localcomp.sh
-explorer .
+
+cp plug-in-file-vera-*.ui "/c/Program Files/GIMP 2/share/gimp/2.0/ui/plug-ins"
+mkdir "/c/Program Files/GIMP 2/lib/gimp/2.0/plug-ins/vera_tileset"
+cp vera_tileset.exe "/c/Program Files/GIMP 2/lib/gimp/2.0/plug-ins/vera_tileset"
 ```
-Finally, check if you have any **.exe** files in the folder . If so, then run `win.apply.bat` to put files in correct places (You may want to run it with an admin). Now you can enjoy the plugin. You can now theoretically **uninstall the MSYS2** if you want to. For additional information have a look at [this issue](https://github.com/jestin/gimp-vera-tileset-plugin/issues/4).
+
+If all's gone well, open GIMP. MSYS2 is no longer needed and the repository
+folder can be deleted.
 
 ## Usage
 
