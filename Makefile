@@ -1,8 +1,8 @@
-GIMPTOOL = gimptool-2.0
+GIMPTOOL = gimptool-3.1
 PROGRAM = vera_tileset
 GCC = gcc
-GIMPCFLAGS = $(shell gimptool-2.0 --cflags)
-GIMPLIBS = $(shell gimptool-2.0 --libs)
+GIMPCFLAGS = $(shell gimptool-3.1 --cflags)
+GIMPLIBS = $(shell gimptool-3.1 --libs)
 WARNING_POLICY = -Wno-deprecated-declarations -Wall
 XML2CFLAGS = $(shell xml2-config --cflags)
 XML2LIBS = $(shell xml2-config --libs)
@@ -11,7 +11,7 @@ SELECTOR_UI_FILE = plug-in-file-vera-selector.ui
 BITMAP_UI_FILE = plug-in-file-vera-bitmap.ui
 
 $(PROGRAM): vera_tileset.c
-	$(GCC) $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) -o $(PROGRAM) vera_tileset.c $(GIMPLIBS) $(XML2LIBS)
+	$(GCC) $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) -o $(PROGRAM) vera_tileset_3.c $(GIMPLIBS) $(XML2LIBS)
 
 install: $(PROGRAM)
 	$(GIMPTOOL) --install-bin $(PROGRAM)
