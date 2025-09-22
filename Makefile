@@ -1,8 +1,9 @@
 GIMPTOOL = gimptool-3.1
+GIMP = gimp-3.1
 PLUGIN = vera_tileset
 GCC = gcc
-GIMPCFLAGS = $(shell gimptool-3.1 --cflags)
-GIMPLIBS = $(shell gimptool-3.1 --libs)
+GIMPCFLAGS = $(shell ${GIMPTOOL} --cflags)
+GIMPLIBS = $(shell ${GIMPTOOL} --libs)
 WARNING_POLICY = -Wno-deprecated-declarations -w
 XML2CFLAGS = $(shell xml2-config --cflags)
 XML2LIBS = $(shell xml2-config --libs)
@@ -38,7 +39,7 @@ uninstall: $(PLUGIN)
 	rm `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(SELECTOR_UI_FILE)
 
 run: install
-	gimp
+	$(GIMP)
 
 tags:
 	ctags * --recurse
