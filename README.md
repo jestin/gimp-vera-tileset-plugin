@@ -129,7 +129,7 @@ directory.  This script should work for most use cases:
 					 pal-file)
   (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE filename filename)))
 		(drawable (car (gimp-image-get-active-layer image))))
-  (file-vera-save RUN-NONINTERACTIVE
+  (file-vera-export RUN-NONINTERACTIVE
 				  image drawable outfile outfile export-type file-header tile-bpp tile-width tile-height tiled-file bmp-file pal-file)
   (gimp-image-delete image)))
 ```
@@ -157,12 +157,12 @@ don't.
 
 ![gimp compile](gimp_compile.gif)
 
-You can also create other useful GIMP scripts that use the `file-vera-save`
+You can also create other useful GIMP scripts that use the `file-vera-export`
 procedure that the plugin defines.  For example, you may want to design an
 image at a larger resolution (perhaps for some box art, promotional materials,
 etc.) but still have it converted to a bitmap for use by the VERA.  In this
 case, you could write a script that crops, scales, converts to indexed mode,
-and finally exports the output using the `file-vera-save` procedure:
+and finally exports the output using the `file-vera-export` procedure:
 
 ```
 (define (make-vera-bitmap filename
@@ -182,7 +182,7 @@ and finally exports the output using the `file-vera-save` procedure:
 	(gimp-image-crop image cropped-width orig-height x-off 0)
 	(gimp-image-scale image 320 240)
 	(gimp-image-convert-indexed image CONVERT-DITHER-FIXED CONVERT-PALETTE-GENERATE (expt 2 bpp) 0 0 "")
-	(file-vera-save RUN-NONINTERACTIVE
+	(file-vera-export RUN-NONINTERACTIVE
 					image drawable outfile outfile 1 file-header bpp 8 8 0 bmp-file pal-file)
 	(gimp-image-delete image)
 	)

@@ -8,7 +8,7 @@
 #include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
 
-#define SAVE_PROC	"file-vera-save"
+#define SAVE_PROC	"file-vera-export"
 #define PLUG_IN_BINARY   "file-vera"
 #define VERA_DEFAULTS_PARASITE  "vera-save-defaults"
 
