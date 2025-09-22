@@ -1,32 +1,41 @@
 GIMPTOOL = gimptool-3.1
-PROGRAM = vera_tileset
+PLUGIN = vera_tileset
 GCC = gcc
 GIMPCFLAGS = $(shell gimptool-3.1 --cflags)
 GIMPLIBS = $(shell gimptool-3.1 --libs)
-WARNING_POLICY = -Wno-deprecated-declarations -Wall
+WARNING_POLICY = -Wno-deprecated-declarations -w
 XML2CFLAGS = $(shell xml2-config --cflags)
 XML2LIBS = $(shell xml2-config --libs)
 TILE_UI_FILE = plug-in-file-vera-tiles.ui
 SELECTOR_UI_FILE = plug-in-file-vera-selector.ui
 BITMAP_UI_FILE = plug-in-file-vera-bitmap.ui
 
-$(PROGRAM): vera_tileset.c
-	$(GCC) $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) -o $(PROGRAM) vera_tileset_3.c $(GIMPLIBS) $(XML2LIBS)
+all: $(PLUGIN)
 
-install: $(PROGRAM)
-	$(GIMPTOOL) --install-bin $(PROGRAM)
+$(PLUGIN): vera_tileset_3.o vera-lib.o vera-ui.o
+	$(GCC)  vera_tileset_3.o vera-lib.o vera-ui.o $(WARNING_POLICY) -o $(PLUGIN) $(GIMPLIBS) $(XML2LIBS)
+
+vera_tileset_3.o: vera_tileset_3.c
+	$(GCC) -c $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) vera_tileset_3.c
+
+vera-lib.o: vera-lib.c
+	$(GCC) -c $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) vera-lib.c 
+
+vera-ui.o: vera-ui.c
+	$(GCC) -c $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) vera-ui.c
+
+install: $(PLUGIN)
+	$(GIMPTOOL) --install-bin $(PLUGIN)
 
 install-ui:
 	cp $(TILE_UI_FILE) `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(TILE_UI_FILE)
 	cp $(SELECTOR_UI_FILE) `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(SELECTOR_UI_FILE)
 	cp $(BITMAP_UI_FILE) `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(BITMAP_UI_FILE)
 
-uninstall: $(PROGRAM)
-	$(GIMPTOOL) --uninstall-bin $(PROGRAM)
+uninstall: $(PLUGIN)
+	$(GIMPTOOL) --uninstall-bin $(PLUGIN)
 	rm `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(TILE_UI_FILE)
 	rm `$(GIMPTOOL) --gimpdatadir`/ui/plug-ins/$(SELECTOR_UI_FILE)
-
-all: $(PROGRAM)
 
 run: install
 	gimp
@@ -35,5 +44,5 @@ tags:
 	ctags * --recurse
 
 clean:
-	rm -f *.o $(PROGRAM)
+	rm -f *.o $(PLUGIN)
 

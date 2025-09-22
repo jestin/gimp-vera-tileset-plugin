@@ -1,3 +1,9 @@
+#ifndef __VERA_LIB_H__
+#define __VERA_LIB_H__
+
+#include <libgimp/gimp.h>
+#include <libgimp/gimpui.h>
+
 typedef enum
 {
 	TILESET = 0,
@@ -39,3 +45,5 @@ typedef struct
 	gboolean       bmp_file;
 	gboolean       pal_file;
 } VeraSaveVals;
+
+#endif /* __VERA_LIB_H__ */

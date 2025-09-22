@@ -29,13 +29,6 @@ static GList          * vera_query_procedures (GimpPlugIn            *plug_in);
 static GimpProcedure  * vera_create_procedure (GimpPlugIn            *plug_in,
                                               const gchar           *name);
 
-static GimpValueArray * vera_load             (GimpProcedure         *procedure,
-                                              GimpRunMode            run_mode,
-                                              GFile                 *file,
-                                              GimpMetadata          *metadata,
-                                              GimpMetadataLoadFlags *flags,
-                                              GimpProcedureConfig   *config,
-                                              gpointer               run_data);
 static GimpValueArray * vera_export           (GimpProcedure         *procedure,
                                               GimpRunMode            run_mode,
                                               GimpImage             *image,
@@ -123,12 +116,10 @@ vera_create_procedure (GimpPlugIn  *plug_in,
     gimp_procedure_add_choice_argument (procedure, "type",
                                         "Export _type",
                                         "Export type",
-                                        gimp_choice_new_with_values ("tileset", TILESET, "VERA Tileset",
-										NULL,
-										"bitmap",  BITMAP,  "VERA Bitmap",
-										NULL,
-										NULL),
-                                        "tileset",
+                                        gimp_choice_new_with_values ("tileset", TILESET, "VERA Tileset", NULL,
+																	 "bitmap",  BITMAP,  "VERA Bitmap",  NULL,
+																	 NULL),
+										"tileset",
                                         G_PARAM_READWRITE);
   }
 
