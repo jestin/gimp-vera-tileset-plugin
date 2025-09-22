@@ -94,7 +94,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
     gimp_procedure_set_menu_label (procedure,
                                    "Versitle Embedded Retro Adapter");
     gimp_file_procedure_set_format_name (GIMP_FILE_PROCEDURE (procedure),
-                                         "VERA");
+                                         "VERA Compatible");
     gimp_procedure_set_icon_name (procedure, GIMP_ICON_BRUSH);
 
     gimp_procedure_set_documentation (procedure,
@@ -113,13 +113,24 @@ vera_create_procedure (GimpPlugIn  *plug_in,
                                             GIMP_EXPORT_CAN_HANDLE_INDEXED,
                                             NULL, NULL, NULL);
 
-    gimp_procedure_add_choice_argument (procedure, "type",
+    gimp_procedure_add_choice_argument (procedure, "exporttype",
                                         "Export _type",
                                         "Export type",
                                         gimp_choice_new_with_values ("tileset", TILESET, "VERA Tileset", NULL,
 																	 "bitmap",  BITMAP,  "VERA Bitmap",  NULL,
 																	 NULL),
 										"tileset",
+                                        G_PARAM_READWRITE);
+
+    gimp_procedure_add_choice_argument (procedure, "bpp",
+                                        "Bits Per Pixel",
+                                        "Bits Per Pixel",
+                                        gimp_choice_new_with_values ("1bpp", TILE_1BPP, "1 Bit Per Pixel", NULL,
+																	 "2bpp",  TILE_2BPP,  "2 Bits Per Pixel",  NULL,
+																	 "4bpp",  TILE_4BPP,  "4 Bits Per Pixel",  NULL,
+																	 "8bpp",  TILE_8BPP,  "8 Bits Per Pixel",  NULL,
+																	 NULL),
+										"4bpp",
                                         G_PARAM_READWRITE);
   }
 
@@ -180,13 +191,14 @@ export_image (GFile        *file,
               GError      **error)
 {
   gint         type;
+  gint         bpp;
   gint         width;       /* Drawable width */
   gint         height;      /* Drawable height */
   GeglBuffer  *buffer;      /* Buffer for layer */
   const Babl  *format;
 
-  type =
-    gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "type");
+  type = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "exporttype");
+  bpp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "bpp");
 
   /*
    * Get the drawable for the current image...
@@ -234,19 +246,26 @@ save_dialog (GimpProcedure *procedure,
              GimpImage     *image)
 {
   GtkWidget *dialog;
-  GtkWidget *vbox;
+  GtkWidget *exporttype_vbox;
+  GtkWidget *bpp_vbox;
   gboolean   run;
 
   dialog = gimp_export_procedure_dialog_new (GIMP_EXPORT_PROCEDURE (procedure),
                                              GIMP_PROCEDURE_CONFIG (config),
                                              image);
 
-  vbox = gimp_procedure_dialog_fill_box (GIMP_PROCEDURE_DIALOG (dialog),
-                                         "vera-vbox", "compression", NULL);
-  gtk_container_set_border_width (GTK_CONTAINER (vbox), 12);
+  exporttype_vbox = gimp_procedure_dialog_fill_box (GIMP_PROCEDURE_DIALOG (dialog),
+                                         "exporttype-vbox", "exporttype", NULL);
+  gtk_container_set_border_width (GTK_CONTAINER (exporttype_vbox), 12);
+
+  bpp_vbox = gimp_procedure_dialog_fill_box (GIMP_PROCEDURE_DIALOG (dialog),
+                                         "bpp-vbox", "bpp", NULL);
+  gtk_container_set_border_width (GTK_CONTAINER (bpp_vbox), 12);
 
   gimp_procedure_dialog_fill (GIMP_PROCEDURE_DIALOG (dialog),
-                              "vera-vbox", NULL);
+                              "exporttype-vbox",
+                              "bpp-vbox",
+							  NULL);
 
   gtk_widget_show (dialog);
 
