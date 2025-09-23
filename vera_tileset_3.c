@@ -122,7 +122,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
 										"tileset",
                                         G_PARAM_READWRITE);
 
-    gimp_procedure_add_choice_argument (procedure, "bpp",
+    gimp_procedure_add_choice_argument (procedure, "tile-bpp",
                                         "_Bits Per Pixel",
                                         "Bits Per Pixel",
                                         gimp_choice_new_with_values ("1bpp", TILE_1BPP, "1 Bit Per Pixel", NULL,
@@ -133,7 +133,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
 										"4bpp",
                                         G_PARAM_READWRITE);
 
-    gimp_procedure_add_choice_argument (procedure, "tilewidth",
+    gimp_procedure_add_choice_argument (procedure, "tile-width",
                                         "Tile _Width",
                                         "Tile Width",
                                         gimp_choice_new_with_values ("8", TILE_WIDTH_8, "8", NULL,
@@ -144,7 +144,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
 										"8",
                                         G_PARAM_READWRITE);
 
-    gimp_procedure_add_choice_argument (procedure, "tileheight",
+    gimp_procedure_add_choice_argument (procedure, "tile-height",
                                         "Tile _Height",
                                         "Tile Height",
                                         gimp_choice_new_with_values ("8", TILE_HEIGHT_8, "8", NULL,
@@ -161,19 +161,19 @@ vera_create_procedure (GimpPlugIn  *plug_in,
                                            TRUE,
                                            G_PARAM_READWRITE);
 
-      gimp_procedure_add_boolean_argument (procedure, "palette",
-                                           "Export VERA _)Palette File",
+      gimp_procedure_add_boolean_argument (procedure, "pal-file",
+                                           "Export VERA _Palette File",
                                            "Export VERA Palette File",
                                            TRUE,
                                            G_PARAM_READWRITE);
 
-      gimp_procedure_add_boolean_argument (procedure, "tiled",
+      gimp_procedure_add_boolean_argument (procedure, "tiled_file",
                                            "Export _Tiled Tileset File",
                                            "Export Tiled Tileset File",
                                            TRUE,
                                            G_PARAM_READWRITE);
 
-      gimp_procedure_add_boolean_argument (procedure, "bmp",
+      gimp_procedure_add_boolean_argument (procedure, "bmp-file",
                                            "Export Bitmap _File",
 										   "Export Bimap File",
                                            TRUE,
@@ -243,18 +243,20 @@ export_image (GFile        *file,
   gint         header;
   gint         palette;
   gint         tiled;
+  gint         bmp;
   gint         width;       /* Drawable width */
   gint         height;      /* Drawable height */
   GeglBuffer  *buffer;      /* Buffer for layer */
   const Babl  *format;
 
   type = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "exporttype");
-  bpp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "bpp");
-  tilewidth = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tilewidth");
-  tileheight = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tileheight");
+  bpp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-bpp");
+  tilewidth = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-width");
+  tileheight = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-height");
   header = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "header");
-  palette = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "palette");
-  tiled = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tiled");
+  palette = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "pal-file");
+  tiled = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tiled_file");
+  bmp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "bmp-file");
 
   /*
    * Get the drawable for the current image...
@@ -313,18 +315,18 @@ save_dialog (GimpProcedure *procedure,
   standard_options_vbox = gimp_procedure_dialog_fill_box (GIMP_PROCEDURE_DIALOG (dialog),
                                          "standard_options_vbox",
 										 "exporttype",
-										 "bpp",
+										 "tile-bpp",
 										 "header",
-										 "palette",
-										 "bmp",
+										 "pal-file",
+										 "bmp-file",
 										 NULL);
   gtk_container_set_border_width (GTK_CONTAINER (standard_options_vbox), 12);
 
   tile_vbox = gimp_procedure_dialog_fill_box (GIMP_PROCEDURE_DIALOG (dialog),
                                          "tile_vbox",
-										 "tilewidth",
-										 "tileheight",
-										 "tiled",
+										 "tile-width",
+										 "tile-height",
+										 "tiled_file",
 										 NULL);
   gtk_container_set_border_width (GTK_CONTAINER (tile_vbox), 12);
 
