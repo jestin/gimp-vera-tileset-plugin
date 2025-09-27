@@ -13,17 +13,14 @@ BITMAP_UI_FILE = plug-in-file-vera-bitmap.ui
 
 all: $(PLUGIN)
 
-$(PLUGIN): vera_tileset_3.o vera-lib.o vera-ui.o
-	$(GCC)  vera_tileset_3.o vera-lib.o vera-ui.o $(WARNING_POLICY) -o $(PLUGIN) $(GIMPLIBS) $(XML2LIBS)
+$(PLUGIN): vera_tileset_3.o vera-lib.o
+	$(GCC) vera_tileset_3.o vera-lib.o $(WARNING_POLICY) -o $(PLUGIN) $(GIMPLIBS) $(XML2LIBS)
 
-vera_tileset_3.o: vera_tileset_3.c
+vera_tileset_3.o: vera_tileset_3.c vera-lib.o
 	$(GCC) -c $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) vera_tileset_3.c
 
 vera-lib.o: vera-lib.c
 	$(GCC) -c $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) vera-lib.c 
-
-vera-ui.o: vera-ui.c
-	$(GCC) -c $(GIMPCFLAGS) $(XML2CFLAGS) $(WARNING_POLICY) vera-ui.c
 
 install: $(PLUGIN)
 	$(GIMPTOOL) --install-bin $(PLUGIN)

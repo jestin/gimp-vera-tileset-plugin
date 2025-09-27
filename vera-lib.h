@@ -46,4 +46,20 @@ typedef struct
 	gboolean       pal_file;
 } VeraSaveVals;
 
+gboolean save_tile_set(
+		const gchar *filename,
+		guchar		*image_buffer,
+		guint32		image_bpp,
+		gint		image_width,
+		gint		image_height,
+		TileBpp		tile_bpp,
+		TileWidth	tile_width,
+		TileHeight	tile_height,
+		gboolean	header,
+		gboolean	tiled_file,
+		gboolean	bmp_file,
+		gboolean	pal_file,
+		GError      **error);
+
+
 #endif /* __VERA_LIB_H__ */

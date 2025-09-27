@@ -236,28 +236,32 @@ export_image (GFile        *file,
               GObject      *config,
               GError      **error)
 {
-  gint         type;
-  gint         bpp;
-  gint         tilewidth;
-  gint         tileheight;
-  gint         header;
-  gint         palette;
-  gint         tiled;
-  gint         bmp;
-  gint         width;       /* Drawable width */
-  gint         height;      /* Drawable height */
-  GeglBuffer  *buffer;      /* Buffer for layer */
-  const Babl  *format;
+  gint			image_bpp;
+  VeraExport	export_type;
+  TileBpp		tile_bpp;
+  TileWidth		tile_width;
+  TileHeight	tile_height;
+  gboolean		header;
+  gboolean		pal_file;
+  gboolean		tiled_file;
+  gboolean		bmp_file;
+  gint			width;
+  gint			height;
+  GeglBuffer	*buffer;
+  const Babl	*format;
 
-  type = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "exporttype");
-  bpp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-bpp");
-  tilewidth = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-width");
-  tileheight = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-height");
+  export_type = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "exporttype");
+  tile_bpp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-bpp");
+  tile_width = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-width");
+  tile_height = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-height");
   header = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "header");
-  palette = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "pal-file");
-  tiled = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tiled_file");
-  bmp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "bmp-file");
+  pal_file = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "pal-file");
+  tiled_file = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tiled_file");
+  bmp_file = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "bmp-file");
 
+  const gchar* filename = gimp_file_get_utf8_name (file);
+
+  guchar           *image_buf;
   /*
    * Get the drawable for the current image...
    */
@@ -268,30 +272,53 @@ export_image (GFile        *file,
   buffer = gimp_drawable_get_buffer (drawable);
 
   switch (gimp_drawable_type (drawable))
-    {
-    case GIMP_INDEXED_IMAGE:
-      format = babl_format ("R'G'B' u8");
-      break;
-
-    case GIMP_INDEXEDA_IMAGE:
-      format = babl_format ("R'G'B'A u8");
-      break;
-
-    default:
-      return FALSE;
-    }
+  {
+	  case GIMP_INDEXED_IMAGE:
+	  case GIMP_INDEXEDA_IMAGE:
+		  format = gimp_drawable_get_format(drawable);
+		  break;
+	  default:
+		  return FALSE;
+  }
 
   /*
    * Open the file for writing...
    */
 
-  gimp_progress_init_printf ("Exporting '%s'",
-                             gimp_file_get_utf8_name (file));
+  image_bpp          = babl_format_get_bytes_per_pixel (format);
 
-  gimp_message("Exporting to VERA format");
+  width  = gegl_buffer_get_width  (buffer);
+  height = gegl_buffer_get_height (buffer);
 
+  image_buf = g_new (guchar, width * height * image_bpp);
+
+  gegl_buffer_get (buffer, GEGL_RECTANGLE (0, 0, width, height), 1.0,
+		  format, image_buf, GEGL_AUTO_ROWSTRIDE, GEGL_ABYSS_NONE);
 
   g_object_unref (buffer);
+
+  gimp_progress_init_printf ("Exporting '%s'", filename);
+
+
+ switch(export_type)
+ {
+	 case TILESET:
+		save_tile_set(
+				filename,
+				image_buf,
+				image_bpp,
+				width,
+				height,
+				tile_bpp,
+				tile_width,
+				tile_height,
+				header,
+				tiled_file,
+				bmp_file,
+				pal_file,
+				error);
+		 break;
+ } 
 
   gimp_progress_update (1.0);
 
