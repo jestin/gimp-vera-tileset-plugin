@@ -61,5 +61,17 @@ gboolean save_tile_set(
 		gboolean	pal_file,
 		GError      **error);
 
+gboolean save_bitmap(
+		const gchar *filename,
+		guchar		*image_buffer,
+		guint32		image_bpp,
+		gint		image_width,
+		gint		image_height,
+		TileBpp		bitmap_bpp,
+		gboolean	header,
+		gboolean	bmp_file,
+		gboolean	pal_file,
+		GError      **error);
+
 
 #endif /* __VERA_LIB_H__ */

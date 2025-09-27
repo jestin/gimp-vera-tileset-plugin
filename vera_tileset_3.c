@@ -318,6 +318,20 @@ export_image (GFile        *file,
 				pal_file,
 				error);
 		 break;
+
+	 case BITMAP:
+		save_bitmap(
+				filename,
+				image_buf,
+				image_bpp,
+				width,
+				height,
+				tile_bpp,
+				header,
+			bmp_file,
+				pal_file,
+				error);
+		break;
  } 
 
   gimp_progress_update (1.0);
