@@ -201,6 +201,7 @@ vera_export (GimpProcedure        *procedure,
 	gboolean			pal_file;
 	gboolean			tiled_file;
 	gboolean			bmp_file;
+	gboolean			header;
 	Babl				*format;
 	const gchar*		filename;
 	GError				*error  = NULL;
@@ -221,7 +222,6 @@ vera_export (GimpProcedure        *procedure,
 			status = GIMP_PDB_EXECUTION_ERROR;
 	}
 
-
 	if (run_mode == GIMP_RUN_INTERACTIVE)
 	{
 		gimp_ui_init (PLUG_IN_BINARY);
@@ -235,6 +235,7 @@ vera_export (GimpProcedure        *procedure,
 			"pal-file", &pal_file,
 			"tiled-file", &tiled_file,
 			"bmp-file", &bmp_file,
+			"header", &header,
 			NULL);
 
 
@@ -259,7 +260,7 @@ vera_export (GimpProcedure        *procedure,
 
 		cmap = gimp_palette_get_colormap(palette, format, &pal_size, &pal_bytes);
 
-		if (! save_palette (filename, cmap, pal_size, &error))
+		if (! save_palette (filename, cmap, pal_size, header, &error))
 		{
 			status = GIMP_PDB_EXECUTION_ERROR;
 		}

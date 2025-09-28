@@ -290,7 +290,68 @@ gboolean save_palette(
 		const gchar		*filename,
 		const guchar	*cmap,
 		const gint		palsize,
+		const gboolean  fileheader,
 		GError			**error)
 {
 	gimp_message("saving palette");
+
+	FILE       *fp = NULL;
+	guchar     *pal_buf;
+	int pal_buf_length = palsize * 2;
+	int pal_buf_index = 0; // start past the 2 byte header
+
+	if(fileheader)
+	{
+		pal_buf_length += 2;
+		pal_buf_index += 2;
+	}
+
+	pal_buf = g_new (guchar, pal_buf_length); // 2 bytes per color, 2 byte header
+
+	if(fileheader)
+	{
+		// 2 byte header
+		pal_buf[0] = 0;
+		pal_buf[1] = 0;
+	}
+
+
+	for(int i = 0; i < palsize*3; i+=3)
+	{
+		// read rgb values from colormap
+		gint r = ((cmap[i] * 15) + 135) >> 8;
+		gint g = ((cmap[i+1] * 15) + 135) >> 8;
+		gint b = ((cmap[i+2] * 15) + 135) >> 8;
+
+		// write out packed g and b values
+		pal_buf[pal_buf_index] = (g & 0x0f) << 4 | b;
+
+		// write out r value in lower nibble
+		pal_buf[pal_buf_index+1] = r & 0x0f;
+
+		pal_buf_index += 2;
+	}
+
+	/* we have colormap too, write it into filename+PAL.BIN */
+	gchar *newfile = g_strconcat (filename, ".PAL", NULL);
+
+	fp = fopen (newfile, "wb");
+
+	if (! fp)
+	{
+		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
+				"Could not open '%s' for writing: %s",
+				gimp_filename_to_utf8 (newfile), g_strerror (errno));
+		g_free(pal_buf);
+		return FALSE;
+	}
+
+	if (!fwrite (pal_buf, pal_buf_length, 1, fp))
+		return FALSE;
+
+	fclose (fp);
+	g_free(pal_buf);
+	g_free(newfile);
+
+	return TRUE;
 }

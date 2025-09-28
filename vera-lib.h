@@ -72,6 +72,7 @@ gboolean save_palette(
 		const gchar		*filename,
 		const guchar	*cmap,
 		const gint		palsize,
+		const gboolean  fileheader,
 		GError			**error);
 
 #endif /* __VERA_LIB_H__ */
