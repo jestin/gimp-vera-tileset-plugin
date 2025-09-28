@@ -38,9 +38,10 @@ static GimpValueArray * vera_export           (GimpProcedure         *procedure,
                                               GimpProcedureConfig   *config,
                                               gpointer               run_data);
 
-static gint             export_image         (GFile                 *file,
+static gint             export_image         (const gchar           *filename,
                                               GimpImage             *image,
                                               GimpDrawable          *drawable,
+											  const Babl            *format,
                                               GObject               *config,
                                               GError               **error);
 
@@ -113,7 +114,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
                                             GIMP_EXPORT_CAN_HANDLE_INDEXED,
                                             NULL, NULL, NULL);
 
-    gimp_procedure_add_choice_argument (procedure, "exporttype",
+    gimp_procedure_add_choice_argument (procedure, "export-type",
                                         "_Export _type",
                                         "Export type",
                                         gimp_choice_new_with_values ("tileset", TILESET, "VERA Tileset", NULL,
@@ -167,7 +168,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
                                            TRUE,
                                            G_PARAM_READWRITE);
 
-      gimp_procedure_add_boolean_argument (procedure, "tiled_file",
+      gimp_procedure_add_boolean_argument (procedure, "tiled-file",
                                            "Export _Tiled Tileset File",
                                            "Export Tiled Tileset File",
                                            TRUE,
@@ -194,12 +195,32 @@ vera_export (GimpProcedure        *procedure,
             GimpProcedureConfig  *config,
 			gpointer              run_data)
 {
-	GimpPDBStatusType  status = GIMP_PDB_SUCCESS;
-	GimpExportReturn   export = GIMP_EXPORT_IGNORE;
-	GList             *drawables;
-	GError            *error  = NULL;
+	GimpPDBStatusType	status = GIMP_PDB_SUCCESS;
+	GimpExportReturn	export = GIMP_EXPORT_IGNORE;
+	GList				*drawables;
+	gboolean			pal_file;
+	gboolean			tiled_file;
+	gboolean			bmp_file;
+	Babl				*format;
+	const gchar*		filename;
+	GError				*error  = NULL;
 
 	gegl_init (NULL, NULL);
+
+	export = gimp_export_options_get_image (options, &image);
+	drawables = gimp_image_list_layers (image);
+	filename = gimp_file_get_utf8_name (file);
+
+	switch (gimp_drawable_type (drawables->data))
+	{
+		case GIMP_INDEXED_IMAGE:
+		case GIMP_INDEXEDA_IMAGE:
+			format = gimp_drawable_get_format(drawables->data);
+			break;
+		default:
+			status = GIMP_PDB_EXECUTION_ERROR;
+	}
+
 
 	if (run_mode == GIMP_RUN_INTERACTIVE)
 	{
@@ -209,16 +230,52 @@ vera_export (GimpProcedure        *procedure,
 			status = GIMP_PDB_CANCEL;
 	}
 
-	export = gimp_export_options_get_image (options, &image);
-	drawables = gimp_image_list_layers (image);
+	/* get user options */	
+	g_object_get(config,
+			"pal-file", &pal_file,
+			"tiled-file", &tiled_file,
+			"bmp-file", &bmp_file,
+			NULL);
+
 
 	if (status == GIMP_PDB_SUCCESS)
 	{
-		if (! export_image (file, image, drawables->data,
+		if (! export_image (filename, image, drawables->data, format,
 					G_OBJECT (config), &error))
 		{
 			status = GIMP_PDB_EXECUTION_ERROR;
 		}
+	}
+
+	/* write palette file */
+	if (status == GIMP_PDB_SUCCESS && pal_file)
+	{
+		gint			pal_size;
+		gsize			pal_bytes;
+		GimpPalette		*palette; 
+		guchar			*cmap;
+
+		palette = gimp_image_get_palette(image); 
+
+		cmap = gimp_palette_get_colormap(palette, format, &pal_size, &pal_bytes);
+
+		if (! save_palette (filename, cmap, pal_size, &error))
+		{
+			status = GIMP_PDB_EXECUTION_ERROR;
+		}
+
+		// free colormap
+		g_free(cmap);
+	}
+
+	/* write bmp file */
+	if (status == GIMP_PDB_SUCCESS && bmp_file)
+	{
+	}
+
+	/* write Tiled tileset file */
+	if (status == GIMP_PDB_SUCCESS && tiled_file)
+	{
 	}
 
 	if (export == GIMP_EXPORT_EXPORT)
@@ -230,11 +287,12 @@ vera_export (GimpProcedure        *procedure,
 
 
 static gint
-export_image (GFile        *file,
-              GimpImage    *image,
-              GimpDrawable *drawable,
-              GObject      *config,
-              GError      **error)
+export_image (const gchar	*filename,
+              GimpImage		*image,
+              GimpDrawable	*drawable,
+			  const Babl	*format,
+              GObject		*config,
+              GError		**error)
 {
   gint			image_bpp;
   VeraExport	export_type;
@@ -242,24 +300,19 @@ export_image (GFile        *file,
   TileWidth		tile_width;
   TileHeight	tile_height;
   gboolean		header;
-  gboolean		pal_file;
-  gboolean		tiled_file;
-  gboolean		bmp_file;
   gint			width;
   gint			height;
   GeglBuffer	*buffer;
-  const Babl	*format;
+  gboolean		ret;
 
-  export_type = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "exporttype");
+  export_type = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "export-type");
   tile_bpp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-bpp");
   tile_width = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-width");
   tile_height = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-height");
-  header = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "header");
-  pal_file = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "pal-file");
-  tiled_file = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tiled_file");
-  bmp_file = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "bmp-file");
 
-  const gchar* filename = gimp_file_get_utf8_name (file);
+  g_object_get(config,
+		  "header", &header,
+		  NULL);
 
   guchar           *image_buf;
   /*
@@ -270,16 +323,6 @@ export_image (GFile        *file,
   height = gimp_drawable_get_height (drawable);
 
   buffer = gimp_drawable_get_buffer (drawable);
-
-  switch (gimp_drawable_type (drawable))
-  {
-	  case GIMP_INDEXED_IMAGE:
-	  case GIMP_INDEXEDA_IMAGE:
-		  format = gimp_drawable_get_format(drawable);
-		  break;
-	  default:
-		  return FALSE;
-  }
 
   /*
    * Open the file for writing...
@@ -299,11 +342,12 @@ export_image (GFile        *file,
 
   gimp_progress_init_printf ("Exporting '%s'", filename);
 
+  ret = TRUE;
 
  switch(export_type)
  {
 	 case TILESET:
-		save_tile_set(
+		ret = save_tile_set(
 				filename,
 				image_buf,
 				image_bpp,
@@ -313,14 +357,11 @@ export_image (GFile        *file,
 				tile_width,
 				tile_height,
 				header,
-				tiled_file,
-				bmp_file,
-				pal_file,
 				error);
 		 break;
 
 	 case BITMAP:
-		save_bitmap(
+		ret = save_bitmap(
 				filename,
 				image_buf,
 				image_bpp,
@@ -328,15 +369,13 @@ export_image (GFile        *file,
 				height,
 				tile_bpp,
 				header,
-			bmp_file,
-				pal_file,
 				error);
 		break;
  } 
 
   gimp_progress_update (1.0);
 
-  return TRUE;
+  return ret;
 }
 
 static gboolean
@@ -355,7 +394,7 @@ save_dialog (GimpProcedure *procedure,
 
   standard_options_vbox = gimp_procedure_dialog_fill_box (GIMP_PROCEDURE_DIALOG (dialog),
                                          "standard_options_vbox",
-										 "exporttype",
+										 "export-type",
 										 "tile-bpp",
 										 "header",
 										 "pal-file",
@@ -367,7 +406,7 @@ save_dialog (GimpProcedure *procedure,
                                          "tile_vbox",
 										 "tile-width",
 										 "tile-height",
-										 "tiled_file",
+										 "tiled-file",
 										 NULL);
   gtk_container_set_border_width (GTK_CONTAINER (tile_vbox), 12);
 

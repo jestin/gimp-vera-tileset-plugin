@@ -56,9 +56,6 @@ gboolean save_tile_set(
 		TileWidth	tile_width,
 		TileHeight	tile_height,
 		gboolean	header,
-		gboolean	tiled_file,
-		gboolean	bmp_file,
-		gboolean	pal_file,
 		GError      **error);
 
 gboolean save_bitmap(
@@ -69,9 +66,12 @@ gboolean save_bitmap(
 		gint		image_height,
 		TileBpp		bitmap_bpp,
 		gboolean	header,
-		gboolean	bmp_file,
-		gboolean	pal_file,
 		GError      **error);
 
+gboolean save_palette(
+		const gchar		*filename,
+		const guchar	*cmap,
+		const gint		palsize,
+		GError			**error);
 
 #endif /* __VERA_LIB_H__ */
