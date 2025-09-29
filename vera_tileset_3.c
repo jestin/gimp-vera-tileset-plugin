@@ -42,8 +42,9 @@ static gint             export_image         (const gchar           *filename,
                                               GimpImage             *image,
                                               GimpDrawable          *drawable,
 											  const Babl            *format,
+			  								  gboolean				report_prgress,
                                               GObject               *config,
-                                              GError               **error);
+                                              GError              	**error);
 
 static gboolean         save_dialog          (GimpProcedure         *procedure,
                                               GObject               *config,
@@ -100,7 +101,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
 
     gimp_procedure_set_documentation (procedure,
                                       "Exports files in VERA compatible binaries",
-                                      "This plug-in exports binary files for VERA chips.",
+                                      "This procedure exports binary files for VERA chips.",
                                       name);
     gimp_procedure_set_attribution (procedure,
                                     "Jestin Stoffel <jestin.stoffel@gmail.com>",
@@ -242,6 +243,7 @@ vera_export (GimpProcedure        *procedure,
 	if (status == GIMP_PDB_SUCCESS)
 	{
 		if (! export_image (filename, image, drawables->data, format,
+					run_mode != GIMP_RUN_NONINTERACTIVE,
 					G_OBJECT (config), &error))
 		{
 			status = GIMP_PDB_EXECUTION_ERROR;
@@ -292,6 +294,7 @@ export_image (const gchar	*filename,
               GimpImage		*image,
               GimpDrawable	*drawable,
 			  const Babl	*format,
+			  gboolean		report_prgress,
               GObject		*config,
               GError		**error)
 {
@@ -341,7 +344,10 @@ export_image (const gchar	*filename,
 
   g_object_unref (buffer);
 
-  gimp_progress_init_printf ("Exporting '%s'", filename);
+  if (report_prgress)
+  {
+	  gimp_progress_init_printf ("Exporting '%s'", filename);
+  }
 
   ret = TRUE;
 
@@ -374,7 +380,10 @@ export_image (const gchar	*filename,
 		break;
  } 
 
-  gimp_progress_update (1.0);
+ if (report_prgress)
+ {
+	 gimp_progress_update (1.0);
+ }
 
   return ret;
 }
