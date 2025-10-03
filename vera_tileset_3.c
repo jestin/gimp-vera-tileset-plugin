@@ -279,6 +279,34 @@ vera_export (GimpProcedure        *procedure,
 	/* write Tiled tileset file */
 	if (status == GIMP_PDB_SUCCESS && tiled_file)
 	{
+		guchar		*image_buf;
+		gint		width;
+		gint		height;
+		GeglBuffer	*buffer;
+		TileBpp 	tile_bpp = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-bpp");
+		TileWidth	tile_width = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-width");
+		TileHeight	tile_height = gimp_procedure_config_get_choice_id (GIMP_PROCEDURE_CONFIG (config), "tile-height");
+		/*
+		 * Get the drawable for the current image...
+		 */
+
+		buffer = gimp_drawable_get_buffer (drawables->data);
+		width  = gegl_buffer_get_width  (buffer);
+		height = gegl_buffer_get_height (buffer);
+
+		if (! save_all_tsx(filename,
+					image,
+					image_buf,
+					width,
+					height,
+					format,
+					tile_bpp,
+					tile_width,
+					tile_height,
+					error))
+		{
+			status = GIMP_PDB_EXECUTION_ERROR;
+		}
 	}
 
 	if (export == GIMP_EXPORT_EXPORT)
@@ -322,9 +350,6 @@ export_image (const gchar	*filename,
   /*
    * Get the drawable for the current image...
    */
-
-  width  = gimp_drawable_get_width  (drawable);
-  height = gimp_drawable_get_height (drawable);
 
   buffer = gimp_drawable_get_buffer (drawable);
 

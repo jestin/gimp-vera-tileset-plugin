@@ -75,4 +75,29 @@ gboolean save_palette(
 		const gboolean  fileheader,
 		GError			**error);
 
+gboolean save_all_tsx(const gchar *filename,
+        GimpImage	*image,
+		guchar		*image_buffer,
+		gint		image_width,
+		gint		image_height,
+		Babl		*format,
+		TileBpp		tile_bpp,
+		TileWidth	tile_width,
+		TileHeight	tile_height,
+		GError		**error);
+
+gboolean save_tsx(const gchar *filename,
+		const gchar *bmp_filename,
+		guchar		*image_buffer,
+		gint		image_width,
+		gint		image_height,
+		TileWidth	tile_width,
+		TileHeight	tile_height,
+		GError		**error);
+
+static void shift_color_map(guchar* orig,
+		guchar** shifted,
+		gint palsize,
+		gint offset);
+
 #endif /* __VERA_LIB_H__ */
