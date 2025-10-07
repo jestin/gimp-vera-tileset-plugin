@@ -366,6 +366,7 @@ gboolean save_all_tsx(const gchar *filename,
 		TileBpp		tile_bpp,
 		TileWidth	tile_width,
 		TileHeight	tile_height,
+		gboolean	bmp_file,
 		GError		**error)
 {
 	gboolean		ret;
@@ -399,11 +400,14 @@ gboolean save_all_tsx(const gchar *filename,
 			gchar *numbered_filename = g_strconcat(filename, ".", number_string, NULL);
 			gchar *numbered_bmp_filename = g_strconcat (numbered_filename, ".bmp", NULL);
 
-			// write out a bitmap to be used with the .tsx file
-			gimp_file_save(GIMP_RUN_NONINTERACTIVE,
-					image,
-					g_file_new_for_path(numbered_bmp_filename),
-					NULL);
+			if (bmp_file)
+			{
+				// write out a bitmap to be used with the .tsx file
+				gimp_file_save(GIMP_RUN_NONINTERACTIVE,
+						image,
+						g_file_new_for_path(numbered_bmp_filename),
+						NULL);
+			}
 
 			if(!save_tsx(numbered_filename,
 						numbered_bmp_filename,
@@ -428,11 +432,14 @@ gboolean save_all_tsx(const gchar *filename,
 	}
 	else // NOT 4bpp or 2BPP
 	{
-		// write out a bitmap to be used with the .tsx file
-		gimp_file_save(GIMP_RUN_NONINTERACTIVE,
-				image,
-				g_file_new_for_path(bmp_filename),
-				NULL);
+		if (bmp_file)
+		{
+			// write out a bitmap to be used with the .tsx file
+			gimp_file_save(GIMP_RUN_NONINTERACTIVE,
+					image,
+					g_file_new_for_path(bmp_filename),
+					NULL);
+		}
 
 		if(!save_tsx(filename,
 					bmp_filename,

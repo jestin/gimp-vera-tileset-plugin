@@ -303,6 +303,7 @@ vera_export (GimpProcedure        *procedure,
 					tile_bpp,
 					tile_width,
 					tile_height,
+					bmp_file,
 					error))
 		{
 			status = GIMP_PDB_EXECUTION_ERROR;

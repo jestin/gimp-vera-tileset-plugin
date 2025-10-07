@@ -84,6 +84,7 @@ gboolean save_all_tsx(const gchar *filename,
 		TileBpp		tile_bpp,
 		TileWidth	tile_width,
 		TileHeight	tile_height,
+		gboolean	bmp_file,
 		GError		**error);
 
 gboolean save_tsx(const gchar *filename,
