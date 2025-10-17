@@ -105,7 +105,7 @@ vera_create_procedure (GimpPlugIn  *plug_in,
                                       name);
     gimp_procedure_set_attribution (procedure,
                                     "Jestin Stoffel <jestin.stoffel@gmail.com>",
-                                    "Copywrite 2022 by Jestin Stoffel",
+                                    "Copyright 2022 by Jestin Stoffel",
                                     PLUG_IN_VERSION);
 
     gimp_file_procedure_set_extensions (GIMP_FILE_PROCEDURE (procedure),
