@@ -423,6 +423,8 @@ save_dialog (GimpProcedure *procedure,
   GtkWidget *standard_options_vbox;
   GtkWidget *tile_vbox;
   gboolean   run;
+  GimpValueArray *values;
+  GValue     value = G_VALUE_INIT;
 
   dialog = gimp_export_procedure_dialog_new (GIMP_EXPORT_PROCEDURE (procedure),
                                              GIMP_PROCEDURE_CONFIG (config),
@@ -446,6 +448,22 @@ save_dialog (GimpProcedure *procedure,
 										 NULL);
   gtk_container_set_border_width (GTK_CONTAINER (tile_vbox), 12);
 
+  /* hide tileset options when bitmap is selected */
+  values = gimp_value_array_new (1);
+  g_value_init (&value, G_TYPE_STRING);
+  g_value_set_string (&value, "tileset");
+  gimp_value_array_append (values, &value);
+  g_value_unset (&value);
+  gimp_procedure_dialog_set_sensitive_if_in (GIMP_PROCEDURE_DIALOG (dialog), "tile-width", NULL, "export-type", values, TRUE);
+
+  /* gimp_procedure_dialog_set_sensitive_if_in takes ownership of values, so make a copy before passing it again */
+  values = gimp_value_array_copy(values);
+  gimp_procedure_dialog_set_sensitive_if_in (GIMP_PROCEDURE_DIALOG (dialog), "tile-height", NULL, "export-type", values, TRUE);
+
+  /* gimp_procedure_dialog_set_sensitive_if_in takes ownership of values, so make a copy before passing it again */
+  values = gimp_value_array_copy(values);
+  gimp_procedure_dialog_set_sensitive_if_in (GIMP_PROCEDURE_DIALOG (dialog), "tiled-file", NULL, "export-type", values, TRUE);
+
   gimp_procedure_dialog_fill (GIMP_PROCEDURE_DIALOG (dialog),
                               "standard_options_vbox",
                               "tile_vbox",
@@ -459,4 +477,3 @@ save_dialog (GimpProcedure *procedure,
 
   return run;
 }
-
